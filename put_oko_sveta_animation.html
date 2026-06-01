@@ -181,15 +181,20 @@
     const placeEl = document.getElementById("place");
     const contextEl = document.getElementById("context");
     const fillEl = document.getElementById("fill");
-    const route = L.polyline([], {
+    const manualMode = new URLSearchParams(window.location.search).has("manual");
+    const STEP_MS = 850;
+    const routeOptions = {
       color: "#52636a",
       weight: 2,
       opacity: 0.6,
       dashArray: "7 10"
-    }).addTo(map);
+    };
 
     let features = [];
     let markers = [];
+    let route = null;
+    let currentIndex = 0;
+    let animationTimer = 0;
 
     function clamp(value, min, max) {
       return Math.max(min, Math.min(max, value));
@@ -229,8 +234,9 @@
     }
 
     function setAnimationIndex(rawIndex) {
-      if (!features.length) return;
+      if (!features.length || !route) return;
       const index = clamp(Number(rawIndex) || 0, 0, features.length - 1);
+      currentIndex = index;
       const visible = features.slice(0, index + 1);
       route.setLatLngs(visible.map(latLng));
 
@@ -259,6 +265,22 @@
       window.__currentAnimationIndex = index;
     }
 
+    function startAnimation() {
+      if (manualMode || animationTimer || features.length < 2) return;
+      window.__animationPlaying = true;
+      animationTimer = window.setInterval(() => {
+        setAnimationIndex(currentIndex >= features.length - 1 ? 0 : currentIndex + 1);
+      }, STEP_MS);
+    }
+
+    function stopAnimation() {
+      if (animationTimer) {
+        window.clearInterval(animationTimer);
+        animationTimer = 0;
+      }
+      window.__animationPlaying = false;
+    }
+
     async function boot() {
       const response = await fetch("put_oko_sveta_locations.geojson");
       const data = await response.json();
@@ -268,10 +290,11 @@
 
       const bounds = L.latLngBounds(features.map(latLng));
       map.fitBounds(bounds, { padding: [92, 84], animate: false });
+      route = L.polyline([latLng(features[0])], routeOptions).addTo(map);
 
       markers = features.map((feature, index) => {
         const marker = L.circleMarker(latLng(feature), {
-          radius: 0,
+          radius: 1,
           color: "#ffffff00",
           weight: 2,
           fillColor: colorForIndex(index),
@@ -282,10 +305,17 @@
 
       setAnimationIndex(0);
       window.setAnimationIndex = setAnimationIndex;
+      window.startAnimation = startAnimation;
+      window.stopAnimation = stopAnimation;
       window.__featuresCount = features.length;
+      window.__manualAnimationMode = manualMode;
+      startAnimation();
     }
 
-    boot();
+    boot().catch(error => {
+      console.error(error);
+      window.__animationError = String(error && error.message ? error.message : error);
+    });
   </script>
 </body>
 </html>
