@@ -1,0 +1,1259 @@
+<!doctype html>
+<html lang="sr-Latn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Put oko sveta za 80 dana - Wikidata mapa lokacija</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <style>
+    :root {
+      --bg: #f6f3ed;
+      --panel: #ffffff;
+      --ink: #1d2428;
+      --muted: #5f6b70;
+      --line: #d7d0c5;
+      --accent: #b83b2d;
+      --accent-2: #2f6f9f;
+      --shadow: 0 18px 45px rgba(39, 32, 24, 0.16);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    .app {
+      display: grid;
+      grid-template-columns: minmax(320px, 420px) 1fr;
+      height: 100vh;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    aside {
+      padding: 28px;
+      background: var(--panel);
+      border-right: 1px solid var(--line);
+      overflow: auto;
+      height: 100vh;
+      z-index: 2;
+      box-shadow: var(--shadow);
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: 26px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+    .lead {
+      margin: 0 0 22px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfaf7;
+    }
+    .stat strong {
+      display: block;
+      font-size: 22px;
+      line-height: 1;
+      margin-bottom: 5px;
+    }
+    .stat span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.25;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .controls {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .slider-control {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfaf7;
+    }
+    .slider-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 9px;
+    }
+    .slider-head label {
+      font-weight: 720;
+      font-size: 13px;
+      color: var(--ink);
+    }
+    #novelPosition {
+      color: var(--accent);
+      font-weight: 760;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    #novelPlace {
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    input, select, button {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font: inherit;
+      color: var(--ink);
+      background: #fff;
+    }
+    input[type="range"] {
+      padding: 0;
+      border: 0;
+      accent-color: var(--accent);
+      background: transparent;
+    }
+    button {
+      cursor: pointer;
+      background: var(--ink);
+      color: #fff;
+      border-color: var(--ink);
+      font-weight: 650;
+    }
+    .link-button {
+      display: block;
+      width: 100%;
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--accent);
+      background: #fff;
+      font: inherit;
+      font-weight: 650;
+      text-align: center;
+      text-decoration: none;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th {
+      position: sticky;
+      top: 0;
+      background: var(--panel);
+      color: var(--muted);
+      text-align: left;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid var(--line);
+      padding: 9px 6px;
+    }
+    td {
+      border-bottom: 1px solid #ece7de;
+      padding: 9px 6px;
+      vertical-align: top;
+      line-height: 1.35;
+    }
+    tr {
+      cursor: pointer;
+    }
+    tr:hover td {
+      background: #fbf4ed;
+    }
+    #map {
+      height: 100vh;
+      min-height: 100vh;
+      width: 100%;
+    }
+    .legend {
+      position: absolute;
+      right: 18px;
+      bottom: 18px;
+      z-index: 500;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 10px 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .legend div {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin: 4px 0;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+    .popup h2 {
+      margin: 0 0 6px;
+      font-size: 17px;
+      line-height: 1.2;
+    }
+    .popup p {
+      margin: 6px 0;
+      line-height: 1.4;
+    }
+    .popup small {
+      color: var(--muted);
+    }
+    .popup a {
+      color: var(--accent-2);
+      font-weight: 650;
+      text-decoration: none;
+    }
+    @media (max-width: 860px) {
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 65vh;
+        height: auto;
+        overflow: visible;
+      }
+      aside {
+        height: auto;
+        max-height: 48vh;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+      #map {
+        height: 65vh;
+        min-height: 65vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <aside>
+      <h1>Put oko sveta za 80 dana</h1>
+      <p class="lead">Mapa geografskih entiteta iz tri WebAnno TSV fajla. Uključene su samo anotacije sa NER labelom LOC. Koordinate su preuzete sa Wikidata preko direktnog svojstva P625, a linija prati redosled prvog pojavljivanja u tekstu.</p>
+      <section class="stats" aria-label="Statistika mape">
+        <div class="stat"><strong>91</strong><span>lokacija</span></div>
+        <div class="stat"><strong>383</strong><span>pominjanja</span></div>
+        <div class="stat"><strong>3</strong><span>TSV fajla</span></div>
+      </section>
+      <section class="controls" aria-label="Kontrole">
+        <input id="search" type="search" placeholder="Pretraži naziv, QID ili pominjanje">
+        <div class="slider-control">
+          <div class="slider-head">
+            <label for="novelSlider">Mesto u romanu</label>
+            <span id="novelPosition">91 / 91</span>
+          </div>
+          <input id="novelSlider" type="range" min="1" max="91" value="91" step="1">
+          <div id="novelPlace">Prikazane su sve LOC lokacije do kraja izabranog dela teksta.</div>
+        </div>
+        <a class="link-button" href="put_oko_sveta_animation.html">Otvori animaciju</a>
+        <button id="fit">Prikaži sve lokacije</button>
+      </section>
+      <table>
+        <thead>
+          <tr><th>#</th><th>Ime</th><th>NER</th><th>Broj</th><th>QID</th></tr>
+        </thead>
+        <tbody id="rows">
+          
+        <tr data-qid="Q1631609">
+          <td>1</td>
+          <td>Sevil-rou Barlington Gardenz<br><small>Savile Row</small></td>
+          <td>LOC</td>
+          <td>10</td>
+          <td>Q1631609</td>
+        </tr>
+        
+
+        <tr data-qid="Q21">
+          <td>2</td>
+          <td>Engleska<br><small>England</small></td>
+          <td>LOC</td>
+          <td>10</td>
+          <td>Q21</td>
+        </tr>
+        
+
+        <tr data-qid="Q84">
+          <td>3</td>
+          <td>Londona<br><small>London</small></td>
+          <td>LOC</td>
+          <td>24</td>
+          <td>Q84</td>
+        </tr>
+        
+
+        <tr data-qid="Q90">
+          <td>4</td>
+          <td>Parizu<br><small>Paris</small></td>
+          <td>LOC</td>
+          <td>9</td>
+          <td>Q90</td>
+        </tr>
+        
+
+        <tr data-qid="Q142">
+          <td>5</td>
+          <td>Francusku<br><small>Francuska</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q142</td>
+        </tr>
+        
+
+        <tr data-qid="Q145">
+          <td>6</td>
+          <td>Ujedinjenog Kraljevstva<br><small>Ujedinjeno Kraljevstvo</small></td>
+          <td>LOC</td>
+          <td>5</td>
+          <td>Q145</td>
+        </tr>
+        
+
+        <tr data-qid="Q925349">
+          <td>7</td>
+          <td>Pel-Melu<br><small>Pall Mall</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q925349</td>
+        </tr>
+        
+
+        <tr data-qid="Q828">
+          <td>8</td>
+          <td>Ameriku<br><small>Americas</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q828</td>
+        </tr>
+        
+
+        <tr data-qid="Q46">
+          <td>9</td>
+          <td>Evropu<br><small>Evropa</small></td>
+          <td>LOC</td>
+          <td>3</td>
+          <td>Q46</td>
+        </tr>
+        
+
+        <tr data-qid="Q24826">
+          <td>10</td>
+          <td>Liverpulu<br><small>Liverpool</small></td>
+          <td>LOC</td>
+          <td>2</td>
+          <td>Q24826</td>
+        </tr>
+        
+
+        <tr data-qid="Q4093">
+          <td>11</td>
+          <td>Glazgovu<br><small>Glasgow</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q4093</td>
+        </tr>
+        
+
+        <tr data-qid="Q42810">
+          <td>12</td>
+          <td>Havru<br><small>Le Havre</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q42810</td>
+        </tr>
+        
+
+        <tr data-qid="Q134514">
+          <td>13</td>
+          <td>Suecu<br><small>Suec</small></td>
+          <td>LOC</td>
+          <td>26</td>
+          <td>Q134514</td>
+        </tr>
+        
+
+        <tr data-qid="Q13496">
+          <td>14</td>
+          <td>Brindiziju<br><small>Brindisi</small></td>
+          <td>LOC</td>
+          <td>9</td>
+          <td>Q13496</td>
+        </tr>
+        
+
+        <tr data-qid="Q60">
+          <td>15</td>
+          <td>Njujorku<br><small>Njujork</small></td>
+          <td>LOC</td>
+          <td>4</td>
+          <td>Q60</td>
+        </tr>
+        
+
+        <tr data-qid="Q3612324">
+          <td>16</td>
+          <td>Alahabada<br><small>Prayagraj (Allahabad)</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q3612324</td>
+        </tr>
+        
+
+        <tr data-qid="Q20892">
+          <td>17</td>
+          <td>Mon Senija<br><small>Le Mont-Saint-Michel</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q20892</td>
+        </tr>
+        
+
+        <tr data-qid="Q1156">
+          <td>18</td>
+          <td>Bombaja<br><small>Mumbai</small></td>
+          <td>LOC</td>
+          <td>40</td>
+          <td>Q1156</td>
+        </tr>
+        
+
+        <tr data-qid="Q1348">
+          <td>19</td>
+          <td>Kalkute<br><small>Kolkata</small></td>
+          <td>LOC</td>
+          <td>20</td>
+          <td>Q1348</td>
+        </tr>
+        
+
+        <tr data-qid="Q8646">
+          <td>20</td>
+          <td>Hong-Konga<br><small>Hong Kong</small></td>
+          <td>LOC</td>
+          <td>10</td>
+          <td>Q8646</td>
+        </tr>
+        
+
+        <tr data-qid="Q148">
+          <td>21</td>
+          <td>Kini<br><small>Kina</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q148</td>
+        </tr>
+        
+
+        <tr data-qid="Q38283">
+          <td>22</td>
+          <td>Jokohame<br><small>Yokohama</small></td>
+          <td>LOC</td>
+          <td>3</td>
+          <td>Q38283</td>
+        </tr>
+        
+
+        <tr data-qid="Q17">
+          <td>23</td>
+          <td>Japanu<br><small>Japan</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q17</td>
+        </tr>
+        
+
+        <tr data-qid="Q62">
+          <td>24</td>
+          <td>San Franciska<br><small>San Francisco</small></td>
+          <td>LOC</td>
+          <td>3</td>
+          <td>Q62</td>
+        </tr>
+        
+
+        <tr data-qid="Q179224">
+          <td>25</td>
+          <td>Dovera<br><small>Dover</small></td>
+          <td>LOC</td>
+          <td>3</td>
+          <td>Q179224</td>
+        </tr>
+        
+
+        <tr data-qid="Q6454">
+          <td>26</td>
+          <td>Kale<br><small>Calais</small></td>
+          <td>LOC</td>
+          <td>2</td>
+          <td>Q6454</td>
+        </tr>
+        
+
+        <tr data-qid="Q801128">
+          <td>27</td>
+          <td>Čering-Kros<br><small>Charing Cross railway station</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q801128</td>
+        </tr>
+        
+
+        <tr data-qid="Q2104233">
+          <td>28</td>
+          <td>Sajdenhem<br><small>Sydenham</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q2104233</td>
+        </tr>
+        
+
+        <tr data-qid="Q668">
+          <td>29</td>
+          <td>Indiju<br><small>Indija</small></td>
+          <td>LOC</td>
+          <td>43</td>
+          <td>Q668</td>
+        </tr>
+        
+
+        <tr data-qid="Q30">
+          <td>30</td>
+          <td>Sjedinjene Države<br><small>Sjedinjene Američke Države</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q30</td>
+        </tr>
+        
+
+        <tr data-qid="Q22">
+          <td>31</td>
+          <td>Skotland<br><small>Scotland</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q22</td>
+        </tr>
+        
+
+        <tr data-qid="Q899">
+          <td>32</td>
+          <td>Suecki kanal<br><small>Suez Canal</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q899</td>
+        </tr>
+        
+
+        <tr data-qid="Q4092">
+          <td>33</td>
+          <td>Rta dobre nade<br><small>Cape of Good Hope</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q4092</td>
+        </tr>
+        
+
+        <tr data-qid="Q134509">
+          <td>34</td>
+          <td>Port Saida<br><small>Port Said</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q134509</td>
+        </tr>
+        
+
+        <tr data-qid="Q23406">
+          <td>35</td>
+          <td>Crvenog mora<br><small>Crveno more</small></td>
+          <td>LOC</td>
+          <td>6</td>
+          <td>Q23406</td>
+        </tr>
+        
+
+        <tr data-qid="Q48">
+          <td>36</td>
+          <td>Aziji<br><small>Asia</small></td>
+          <td>LOC</td>
+          <td>2</td>
+          <td>Q48</td>
+        </tr>
+        
+
+        <tr data-qid="Q97">
+          <td>37</td>
+          <td>Atlantskog okeana<br><small>Atlantic Ocean</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q97</td>
+        </tr>
+        
+
+        <tr data-qid="Q711">
+          <td>38</td>
+          <td>Mongoliju<br><small>Mongolija</small></td>
+          <td>LOC</td>
+          <td>22</td>
+          <td>Q711</td>
+        </tr>
+        
+
+        <tr data-qid="Q495">
+          <td>39</td>
+          <td>Torino<br><small>Turin</small></td>
+          <td>LOC</td>
+          <td>2</td>
+          <td>Q495</td>
+        </tr>
+        
+
+        <tr data-qid="Q79">
+          <td>40</td>
+          <td>Egiptu<br><small>Egipat</small></td>
+          <td>LOC</td>
+          <td>3</td>
+          <td>Q79</td>
+        </tr>
+        
+
+        <tr data-qid="Q15">
+          <td>41</td>
+          <td>Africi<br><small>Africa</small></td>
+          <td>LOC</td>
+          <td>3</td>
+          <td>Q15</td>
+        </tr>
+        
+
+        <tr data-qid="Q311">
+          <td>42</td>
+          <td>Per Lašez<br><small>Père Lachaise Cemetery</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q311</td>
+        </tr>
+        
+
+        <tr data-qid="Q550">
+          <td>43</td>
+          <td>Jelisejskim poljima<br><small>avenue des Champs-Élysées</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q550</td>
+        </tr>
+        
+
+        <tr data-qid="Q1239">
+          <td>44</td>
+          <td>Indijsko more<br><small>Indian Ocean</small></td>
+          <td>LOC</td>
+          <td>3</td>
+          <td>Q1239</td>
+        </tr>
+        
+
+        <tr data-qid="Q131694">
+          <td>45</td>
+          <td>Adena<br><small>Aden</small></td>
+          <td>LOC</td>
+          <td>4</td>
+          <td>Q131694</td>
+        </tr>
+        
+
+        <tr data-qid="Q1249523">
+          <td>46</td>
+          <td>Indijskog poluostrva<br><small>Indian Peninsula</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q1249523</td>
+        </tr>
+        
+
+        <tr data-qid="Q854">
+          <td>47</td>
+          <td>Cejlona<br><small>Šri Lanka</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q854</td>
+        </tr>
+        
+
+        <tr data-qid="Q83318">
+          <td>48</td>
+          <td>Bab-el-Mandeb<br><small>Bab-el-Mandeb</small></td>
+          <td>LOC</td>
+          <td>2</td>
+          <td>Q83318</td>
+        </tr>
+        
+
+        <tr data-qid="Q34675">
+          <td>49</td>
+          <td>Arabijskog zaliva<br><small>Persian Gulf</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q34675</td>
+        </tr>
+        
+
+        <tr data-qid="Q79980">
+          <td>50</td>
+          <td>Benares<br><small>Varanasi</small></td>
+          <td>LOC</td>
+          <td>6</td>
+          <td>Q79980</td>
+        </tr>
+        
+
+        <tr data-qid="Q12370427">
+          <td>51</td>
+          <td>Moku<br><small>Moku</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q12370427</td>
+        </tr>
+        
+
+        <tr data-qid="Q2581165">
+          <td>52</td>
+          <td>Moka<br><small>Moka</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q2581165</td>
+        </tr>
+        
+
+        <tr data-qid="Q256847">
+          <td>53</td>
+          <td>Salcet<br><small>Salcete taluk</small></td>
+          <td>LOC</td>
+          <td>3</td>
+          <td>Q256847</td>
+        </tr>
+        
+
+        <tr data-qid="Q175304">
+          <td>54</td>
+          <td>Elefanta<br><small>Elephanta Island</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q175304</td>
+        </tr>
+        
+
+        <tr data-qid="Q5002452">
+          <td>55</td>
+          <td>Bačer<br><small>Butcher Island</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q5002452</td>
+        </tr>
+        
+
+        <tr data-qid="Q1352">
+          <td>56</td>
+          <td>Madrasu<br><small>Chennai</small></td>
+          <td>LOC</td>
+          <td>2</td>
+          <td>Q1352</td>
+        </tr>
+        
+
+        <tr data-qid="Q80338">
+          <td>57</td>
+          <td>Bengalu<br><small>Bengal</small></td>
+          <td>LOC</td>
+          <td>2</td>
+          <td>Q80338</td>
+        </tr>
+        
+
+        <tr data-qid="Q199575">
+          <td>58</td>
+          <td>Agri<br><small>Agri</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q199575</td>
+        </tr>
+        
+
+        <tr data-qid="Q5089">
+          <td>59</td>
+          <td>Gangu<br><small>Ganges</small></td>
+          <td>LOC</td>
+          <td>9</td>
+          <td>Q5089</td>
+        </tr>
+        
+
+        <tr data-qid="Q162442">
+          <td>60</td>
+          <td>Alahabada<br><small>Prayagraj</small></td>
+          <td>LOC</td>
+          <td>17</td>
+          <td>Q162442</td>
+        </tr>
+        
+
+        <tr data-qid="Q851955">
+          <td>61</td>
+          <td>Bundelkunda<br><small>Bundelkhand</small></td>
+          <td>LOC</td>
+          <td>9</td>
+          <td>Q851955</td>
+        </tr>
+        
+
+        <tr data-qid="Q6373912">
+          <td>62</td>
+          <td>Malebar-Hil<br><small>Malabar Hill</small></td>
+          <td>LOC</td>
+          <td>3</td>
+          <td>Q6373912</td>
+        </tr>
+        
+
+        <tr data-qid="Q366754">
+          <td>63</td>
+          <td>Kelijan<br><small>Kalyan</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q366754</td>
+        </tr>
+        
+
+        <tr data-qid="Q3595887">
+          <td>64</td>
+          <td>Kendalaha<br><small>Khandala</small></td>
+          <td>LOC</td>
+          <td>2</td>
+          <td>Q3595887</td>
+        </tr>
+        
+
+        <tr data-qid="Q1538">
+          <td>65</td>
+          <td>Punaha<br><small>Pune</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q1538</td>
+        </tr>
+        
+
+        <tr data-qid="Q63361171">
+          <td>66</td>
+          <td>Pauel<br><small>Powai railway station</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q63361171</td>
+        </tr>
+        
+
+        <tr data-qid="Q4527">
+          <td>67</td>
+          <td>Zapadnih Gatesa<br><small>Western Ghats</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q4527</td>
+        </tr>
+        
+
+        <tr data-qid="Q200235">
+          <td>68</td>
+          <td>Nesik<br><small>Našik</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q200235</td>
+        </tr>
+        
+
+        <tr data-qid="Q6542546">
+          <td>69</td>
+          <td>Kandiša<br><small>Kandis</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q6542546</td>
+        </tr>
+        
+
+        <tr data-qid="Q191314">
+          <td>70</td>
+          <td>Godovere<br><small>Godavari River</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q191314</td>
+        </tr>
+        
+
+        <tr data-qid="Q580965">
+          <td>71</td>
+          <td>Meligama<br><small>Malegaon</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q580965</td>
+        </tr>
+        
+
+        <tr data-qid="Q5367201">
+          <td>72</td>
+          <td>Elora<br><small>Elora</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q5367201</td>
+        </tr>
+        
+
+        <tr data-qid="Q200713">
+          <td>73</td>
+          <td>Oregabar<br><small>Aurangabad</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q200713</td>
+        </tr>
+        
+
+        <tr data-qid="Q593193">
+          <td>74</td>
+          <td>Burhampur<br><small>Burhanpur</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q593193</td>
+        </tr>
+        
+
+        <tr data-qid="Q24949848">
+          <td>75</td>
+          <td>Asurgur<br><small>Asirgarh Road railway station</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q24949848</td>
+        </tr>
+        
+
+        <tr data-qid="Q707056">
+          <td>76</td>
+          <td>Tepte<br><small>Tapti River</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q707056</td>
+        </tr>
+        
+
+        <tr data-qid="Q654010">
+          <td>77</td>
+          <td>Kembejski zaliv<br><small>Gulf of Khambhat</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q654010</td>
+        </tr>
+        
+
+        <tr data-qid="Q4629">
+          <td>78</td>
+          <td>Surata<br><small>Surat</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q4629</td>
+        </tr>
+        
+
+        <tr data-qid="Q1145416">
+          <td>79</td>
+          <td>Sutapura<br><small>Satpura Range</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q1145416</td>
+        </tr>
+        
+
+        <tr data-qid="Q598803">
+          <td>80</td>
+          <td>Kandiš<br><small>Khandesh</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q598803</td>
+        </tr>
+        
+
+        <tr data-qid="Q271435">
+          <td>81</td>
+          <td>Vindijskih planina<br><small>Vindhya Range</small></td>
+          <td>LOC</td>
+          <td>2</td>
+          <td>Q271435</td>
+        </tr>
+        
+
+        <tr data-qid="Q502531">
+          <td>82</td>
+          <td>Madrasu<br><small>Madras High Court</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q502531</td>
+        </tr>
+        
+
+        <tr data-qid="Q132726">
+          <td>83</td>
+          <td>Džamne<br><small>Jamuna</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q132726</td>
+        </tr>
+        
+
+        <tr data-qid="Q5451">
+          <td>84</td>
+          <td>Himalaja<br><small>Himalayas</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q5451</td>
+        </tr>
+        
+
+        <tr data-qid="Q1524">
+          <td>85</td>
+          <td>Atina<br><small>Athens</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q1524</td>
+        </tr>
+        
+
+        <tr data-qid="Q75152699">
+          <td>86</td>
+          <td>Behara<br><small>Beharia</small></td>
+          <td>LOC</td>
+          <td>2</td>
+          <td>Q75152699</td>
+        </tr>
+        
+
+        <tr data-qid="Q60623371">
+          <td>87</td>
+          <td>Gazepur<br><small>Gazipur</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q60623371</td>
+        </tr>
+        
+
+        <tr data-qid="Q80484">
+          <td>88</td>
+          <td>Patnu<br><small>Patna</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q80484</td>
+        </tr>
+        
+
+        <tr data-qid="Q18125">
+          <td>89</td>
+          <td>Mančester<br><small>Manchester</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q18125</td>
+        </tr>
+        
+
+        <tr data-qid="Q2256">
+          <td>90</td>
+          <td>Birmingam<br><small>Birmingham</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q2256</td>
+        </tr>
+        
+
+        <tr data-qid="Q4141623">
+          <td>91</td>
+          <td>Golkonda<br><small>Golconda</small></td>
+          <td>LOC</td>
+          <td>1</td>
+          <td>Q4141623</td>
+        </tr>
+        
+        </tbody>
+      </table>
+    </aside>
+    <section style="position: relative;">
+      <div id="map" aria-label="Mapa lokacija"></div>
+      <div class="legend" aria-label="Legenda">
+        <div><span class="dot" style="background: var(--accent);"></span>NER labela LOC</div>
+      </div>
+    </section>
+  </main>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script>
+    const data = {"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Point","coordinates":[-0.140853,51.5113]},"properties":{"qid":"Q1631609","label":"Savile Row","wikidata_url":"https://www.wikidata.org/wiki/Q1631609","annotation_types":[{"type":"LOC","count":10}],"wikidata_types":["street"],"ner_label":"LOC","mention_count":10,"first_order":6,"first_mention":"Sevil-rou Barlington Gardenz","first_sentence":"Godine 1872 , u kući broj 7 u Ulici Sevil - rou Barlington Gardenz , u kojoj je 1816 . godine umro Šeridan , stanovao je gospodin Fileas Fog , jedan od najčudnovatijih i najzapaženijih članova londonskog Reform - kluba , iako je izgledalo da se on trudi da ne učini ništa što bi moglo na njega privući pažnju .","source_files":["I_Vern-all-56001-56500-ner.tsv","I_Vern-all-57001-57500-ner.tsv"],"sample_mentions":[{"text":"Sevil-rou Barlington Gardenz","sentence":"Godine 1872 , u kući broj 7 u Ulici Sevil - rou Barlington Gardenz , u kojoj je 1816 . godine umro Šeridan , stanovao je gospodin Fileas Fog , jedan od najčudnovatijih i najzapaženijih članova londonskog Reform - kluba , iako je izgledalo da se on trudi da ne učini ništa što bi moglo na njega privući pažnju .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Sevil-rou","sentence":"Fileas Fog je živeo sam u svojoj kući u Ulici Sevil - rou , u koju niko nije dolazio . Nije se govorilo o unutrašnjem životu u kući .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Sevil-rou","sentence":"Mada kuća u Ulici Sevil - rou nije bila raskošna , ona se isticala najvećom udobnošću .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Sevil-rou","sentence":"Paspartu ostade sam u kući u Ulici Sevil - rou .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Sevil-rou","sentence":"On mu se predstavi , i kao što smo videli , bi primljen . Izbilo je jedanaest i po časova kad se Paspartu našao sam u kući u Sevil - rou .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Sevil-rou","sentence":"Ukratko , ta kuća u Sevil - rou - koja je morala biti hramom neurednosti u vreme slavnog ali nemarnog Šeridana - bila je udobno nameštena i nagoveštavala blagostanje . Nije bilo knjižice ni knjiga koje bi gospodinu Fogu bile suvišne , jer mu je Reform - klub stavljao na raspolaganje dve knjižice , jednu posvećenu lepoj književnosti , drugu pravu i politici .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Sevil-rou","sentence":"III GLAVA : u kojoj se započeo razgovor koji Fileasa Foga može skupo stati Fileas Fog je izašao iz svoje kuće u Sevil - rou u jedanaest i po časova , i pošto je pet stotina sedamdeset pet puta stavio desnu nogu ispred leve i pet stotina sedamdeset šest puta levu nogu ispred desne , stigao je u Reform - klub , prostranu zgradu , podignutu u Pel - Melu , čija je izgradnja stajala najmanje tri miliona livara .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Sevil-roua","sentence":"Prema knjižici , stanovnik Sevil - roua imao se vratiti kući tačno u ponoć .","source_file":"I_Vern-all-56001-56500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[-1.0,53.0]},"properties":{"qid":"Q21","label":"England","wikidata_url":"https://www.wikidata.org/wiki/Q21","annotation_types":[{"type":"LOC","count":10}],"wikidata_types":["country","nation","cultural area","constituent country of the United Kingdom"],"ner_label":"LOC","mention_count":10,"first_order":12,"first_mention":"Engleska","first_sentence":"Posle jednog od najvećih govornika kojim se ponosi Engleska došao je , dakle , Fileas Fog , zagonetna ličnost o kojoj se nije ništa drugo znalo sem da je to čovek vrlo uglađen i jedan od najplemenitijih džentlmena visokog engleskog društva .","source_files":["I_Vern-all-56001-56500-ner.tsv"],"sample_mentions":[{"text":"Engleska","sentence":"Posle jednog od najvećih govornika kojim se ponosi Engleska došao je , dakle , Fileas Fog , zagonetna ličnost o kojoj se nije ništa drugo znalo sem da je to čovek vrlo uglađen i jedan od najplemenitijih džentlmena visokog engleskog društva .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Engleskoj","sentence":"– Ali je već pet godina kako sam ostavio Francusku i želeći da uživam u porodičnom životu , postao sam sobar u Engleskoj .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Engleskoj","sentence":"Žan , nazvan Paspartu , pravi Parizlija iz Pariza , za pet godina što ih je proveo u Engleskoj i Londonu kao sobar , uzalud je tražio gospodara koga bi mogao zavoleti .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Englesku","sentence":"Čuvši da hvale englesku metodičnost i poslovičnu džentlmensku hladnoću , došao je u Englesku da tamo potraži sreću . Ali ga je sreća dotada rđavo služila .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Engleskoj","sentence":"Očekujući rezultate odmah započete istrage , ovi agenti su imali dužnost da savesno motre na sve putnike koji odlaze i koji dolaze . I zaista , kao što je javljao Morning kronikal , trebalo je pretpostaviti da kradljivac ne spada ni u jednu lopovsku družinu u Engleskoj .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Engleskoj","sentence":"Razumljivo je što je taj događaj bio na dnevnom redu u Londonu i u celoj Engleskoj .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Engleskoj","sentence":"Poznato je koliko su ljudi u Engleskoj zainteresovani za sve što se tiče geografije .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Engleskoj","sentence":"Poznato je da oni koji se u Engleskoj klade imaju više inteligencije i da su plemenitiji od onih koji se kartaju . Kladiti se , to je u temperamentu Engleza . I tako su sklopljene velike opklade za ili protiv Fileasa Foga ne samo među članovima Reform - kluba , nego i u masama građanstva .","source_file":"I_Vern-all-56001-56500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[-0.1275,51.507222222]},"properties":{"qid":"Q84","label":"London","wikidata_url":"https://www.wikidata.org/wiki/Q84","annotation_types":[{"type":"LOC","count":24}],"wikidata_types":["city","megacity","velegrad","Velegrad","financial center","largest city","national capital"],"ner_label":"LOC","mention_count":24,"first_order":22,"first_mention":"Londona","first_sentence":"Niko ga nije nikada video na berzi , ili u banci , ili u jednoj od ustanova u centru grada . Ni u pristaništa , ni u dokove Londona nije nikada prispeo nikakav brod čiji bi brodovlasnik bio Fileas Fog .","source_files":["I_Vern-all-56001-56500-ner.tsv","I_Vern-all-56501-57000-ner.tsv","I_Vern-all-57001-57500-ner.tsv"],"sample_mentions":[{"text":"Londona","sentence":"Niko ga nije nikada video na berzi , ili u banci , ili u jednoj od ustanova u centru grada . Ni u pristaništa , ni u dokove Londona nije nikada prispeo nikakav brod čiji bi brodovlasnik bio Fileas Fog .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"London","sentence":"Ali , bilo je izvesno da Fileas Fog već niz dugih godina nije napuštao London .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Londonu","sentence":"Žan , nazvan Paspartu , pravi Parizlija iz Pariza , za pet godina što ih je proveo u Engleskoj i Londonu kao sobar , uzalud je tražio gospodara koga bi mogao zavoleti .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Londonu","sentence":"Razumljivo je što je taj događaj bio na dnevnom redu u Londonu i u celoj Engleskoj .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Londona","sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Londona","sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"London","sentence":"Dakle , doda pregledavši svoj džepni kalendar pošto je danas sreda , 2 . oktobar , trebalo bi da se vratim u London , u ovaj isti salon Reform - kluba , u subotu , 21 . decembra , u osam časova i četrdeset i pet minuta uveče , inače će dvadeset hiljada livara položenih sada na mom računu kod braće Beringa pripasti vama , gospodo , i stvarno i pravno . Evo čeka na tu sumu .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"London","sentence":"Fileas Fog napuštajući London nije zacelo ni slutio kakvu će buku proizvesti njegov odlazak .","source_file":"I_Vern-all-56001-56500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[2.352222222,48.856666666]},"properties":{"qid":"Q90","label":"Paris","wikidata_url":"https://www.wikidata.org/wiki/Q90","annotation_types":[{"type":"LOC","count":9}],"wikidata_types":["megacity","velegrad","Velegrad","territorial collectivity of France with special status","largest city","national capital"],"ner_label":"LOC","mention_count":9,"first_order":50,"first_mention":"Parizu","first_sentence":"– Bio sam pevač - skitnica , konjušar u jednom cirkusu , umeo sam se prevrtati kao Leotar i igrati na konopcu kao Blonden , zatim sam , da bih svoje sposobnosti bolje iskoristio , postao nastavnik gimnastike , i , najzad , bio sam vatrogasni podoficir u Parizu .","source_files":["I_Vern-all-56001-56500-ner.tsv","I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Parizu","sentence":"– Bio sam pevač - skitnica , konjušar u jednom cirkusu , umeo sam se prevrtati kao Leotar i igrati na konopcu kao Blonden , zatim sam , da bih svoje sposobnosti bolje iskoristio , postao nastavnik gimnastike , i , najzad , bio sam vatrogasni podoficir u Parizu .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Pariza","sentence":"Žan , nazvan Paspartu , pravi Parizlija iz Pariza , za pet godina što ih je proveo u Engleskoj i Londonu kao sobar , uzalud je tražio gospodara koga bi mogao zavoleti .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Pariza","sentence":"Možda će ići do Pariza , i vere mu , on bi zaista rado ponovo video veliki grad .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Pariz","sentence":"Tu Fileas Fog naredi Paspartuu da kupi dve karte prve klase za Pariz .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Pariz","sentence":"– Stigao u Pariz u četvrtak 3 .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Pariza","sentence":"oktobra u 7 časova i 30 minuta izjutra . – Otišao iz Pariza u četvrtak u 8 časova i 40 minuta izjutra . – Došao preko Mon Senija u Torino u petak 4 .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Pariz","sentence":"Pariz , Brindizi , Suec , Bombaj , Kalkutu , Hong - Kong , Jokohamu , San Francisko , Njujork , Liverpul , London , a koji je omogućivao lako izračunavanje gubitka i dobitka za svaki deo puta .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Pariza","sentence":"Ne mogu da verujem . Zamislite , gospodine , ja sam mislio da nećemo ići dalje od Pariza , taj slavni grad sam video svega od sedam časova i dvadeset minuta izjutra do osam časova i četrdeset minuta , i to između severne železničke stanice i lionske , železničke stanice , kroz prozore jednog fijakera , i to po jakoj kiši .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[2.0,47.0]},"properties":{"qid":"Q142","label":"Francuska","wikidata_url":"https://www.wikidata.org/wiki/Q142","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["country","republika","suverena država"],"ner_label":"LOC","mention_count":1,"first_order":51,"first_mention":"Francusku","first_sentence":"– Ali je već pet godina kako sam ostavio Francusku i želeći da uživam u porodičnom životu , postao sam sobar u Engleskoj .","source_files":["I_Vern-all-56001-56500-ner.tsv"],"sample_mentions":[{"text":"Francusku","sentence":"– Ali je već pet godina kako sam ostavio Francusku i želeći da uživam u porodičnom životu , postao sam sobar u Engleskoj .","source_file":"I_Vern-all-56001-56500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[-2.0,54.6]},"properties":{"qid":"Q145","label":"Ujedinjeno Kraljevstvo","wikidata_url":"https://www.wikidata.org/wiki/Q145","annotation_types":[{"type":"LOC","count":5}],"wikidata_types":["country","ostrvska država","suverena država","colonial power"],"ner_label":"LOC","mention_count":5,"first_order":54,"first_mention":"Ujedinjenog Kraljevstva","first_sentence":"– Kako sam upravo ostao bez službe , a saznavši da je gospodin Fileas Fog najtačniji i najstalniji čovek , Ujedinjenog Kraljevstva , predstavljam se gospodinu nadajući se da ću ovde spokojno živeti i zaboraviti i na samo ime Paspartu … Paspartu mi se dopada odgovori džentlmen .","source_files":["I_Vern-all-56001-56500-ner.tsv"],"sample_mentions":[{"text":"Ujedinjenog Kraljevstva","sentence":"– Kako sam upravo ostao bez službe , a saznavši da je gospodin Fileas Fog najtačniji i najstalniji čovek , Ujedinjenog Kraljevstva , predstavljam se gospodinu nadajući se da ću ovde spokojno živeti i zaboraviti i na samo ime Paspartu … Paspartu mi se dopada odgovori džentlmen .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Ujedinjenom Kraljevstvu","sentence":"Miran , flegmatičan , čista oka , čiji kapci behu nepomični , bio potpun tip onih hladnokrvnih Engleza koji se sretaju vrlo često u Ujedinjenom Kraljevstvu i čije je nešto akademsko držanje Angelika Kaufman vanredno naslikala svojom kičicom .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Ujedinjenog Kraljevstva","sentence":"Događaj o kome se govorilo , a o kome su žestoko raspravljali mnogi dnevni listovi , Ujedinjenog Kraljevstva , odigrao se tri dana ranije , 29 . septembra .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Ujedinjenog Kraljevstva","sentence":"Istraga je uspela da dosta tačno utvrdi opis tog džentlmena , i taj opis je odmah bio upućen svim detektivima Ujedinjenog Kraljevstva i evropskog kontinenta .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Ujedinjeno Kraljevstvo","sentence":"Ujedinjeno Kraljevstvo .","source_file":"I_Vern-all-56001-56500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[-0.133055555,51.506944444]},"properties":{"qid":"Q925349","label":"Pall Mall","wikidata_url":"https://www.wikidata.org/wiki/Q925349","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["street"],"ner_label":"LOC","mention_count":1,"first_order":107,"first_mention":"Pel-Melu","first_sentence":"III GLAVA : u kojoj se započeo razgovor koji Fileasa Foga može skupo stati Fileas Fog je izašao iz svoje kuće u Sevil - rou u jedanaest i po časova , i pošto je pet stotina sedamdeset pet puta stavio desnu nogu ispred leve i pet stotina sedamdeset šest puta levu nogu ispred desne , stigao je u Reform - klub , prostranu zgradu , podignutu u Pel - Melu , čija je izgradnja stajala najmanje tri miliona livara .","source_files":["I_Vern-all-56001-56500-ner.tsv"],"sample_mentions":[{"text":"Pel-Melu","sentence":"III GLAVA : u kojoj se započeo razgovor koji Fileasa Foga može skupo stati Fileas Fog je izašao iz svoje kuće u Sevil - rou u jedanaest i po časova , i pošto je pet stotina sedamdeset pet puta stavio desnu nogu ispred leve i pet stotina sedamdeset šest puta levu nogu ispred desne , stigao je u Reform - klub , prostranu zgradu , podignutu u Pel - Melu , čija je izgradnja stajala najmanje tri miliona livara .","source_file":"I_Vern-all-56001-56500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[-96.0,19.0]},"properties":{"qid":"Q828","label":"Americas","wikidata_url":"https://www.wikidata.org/wiki/Q828","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["continent","supercontinent","part of the world"],"ner_label":"LOC","mention_count":1,"first_order":119,"first_mention":"Ameriku","first_sentence":"– Policijski inspektori , vrlo vešti ljudi , poslati su u Ameriku i Evropu u sva glavna pristaništa za ukrcavanje i iskrcavanje , i taj će gospodin teško umaći .","source_files":["I_Vern-all-56001-56500-ner.tsv"],"sample_mentions":[{"text":"Ameriku","sentence":"– Policijski inspektori , vrlo vešti ljudi , poslati su u Ameriku i Evropu u sva glavna pristaništa za ukrcavanje i iskrcavanje , i taj će gospodin teško umaći .","source_file":"I_Vern-all-56001-56500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[15.5,53.5]},"properties":{"qid":"Q46","label":"Evropa","wikidata_url":"https://www.wikidata.org/wiki/Q46","annotation_types":[{"type":"LOC","count":3}],"wikidata_types":["continent","part of the world"],"ner_label":"LOC","mention_count":3,"first_order":120,"first_mention":"Evropu","first_sentence":"– Policijski inspektori , vrlo vešti ljudi , poslati su u Ameriku i Evropu u sva glavna pristaništa za ukrcavanje i iskrcavanje , i taj će gospodin teško umaći .","source_files":["I_Vern-all-56001-56500-ner.tsv","I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Evropu","sentence":"– Policijski inspektori , vrlo vešti ljudi , poslati su u Ameriku i Evropu u sva glavna pristaništa za ukrcavanje i iskrcavanje , i taj će gospodin teško umaći .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Evropi","sentence":"Prema tome članku sve je bilo protiv Fileasa Foga , i ljudi i priroda . Da bi plan mogao uspeti , trebalo je pretpostaviti čudnovato poklapanje časova odlaska i dolaska , poklapanje koje nije postojalo i nije moglo postojati U najgorem slučaju , u Evropi , gde su u pitanju putevi srednje udaljenosti , može se računati sa dolaskom vozova u određeni čas , ali kad se računa tri dana kroz Indiju , sedam dana za prolaz kroz Sjedinjene Države , zar se na njihovoj tačnosti može osnivati rešavanje takvog problema ?","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Evropu","sentence":"Iznad svega zahteva da se poštuju verski običaji Indusa , i da je vaš sluga uhvaćen … Da je uhvaćen , ser Fransise , odgovori gospodin Fog on bi bio osuđen , izdržao bi svoju kaznu , a zatim bi se vratio mirno u Evropu .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[-2.991666666,53.407222222]},"properties":{"qid":"Q24826","label":"Liverpool","wikidata_url":"https://www.wikidata.org/wiki/Q24826","annotation_types":[{"type":"LOC","count":2}],"wikidata_types":["city","veliki grad"],"ner_label":"LOC","mention_count":2,"first_order":129,"first_mention":"Liverpulu","first_sentence":"Svežanj novčanica nije bio vraćen , i kada je veličanstveni časovnik iznad dvorane za primanje u pet časova zvonjenjem objavio zatvaranje kancelarija , Engleskoj banci ne preostade drugo nego da tih pedeset pet hiljada livara uvede na račun dobitaka i gubitaka . Kada je krađa dobro i savesno isleđena , poslati su najveštiji agenti i detektivi u glavna pristaništa u Liverpulu , Glazgovu , Havru , Suecu , Brindiziju Njujorku itd . , uz obećanje da će u slučaju uspeha dobiti nagradu od dve hiljade livara i pet od sto od sume novca koji bude nađen .","source_files":["I_Vern-all-56001-56500-ner.tsv","I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Liverpulu","sentence":"Svežanj novčanica nije bio vraćen , i kada je veličanstveni časovnik iznad dvorane za primanje u pet časova zvonjenjem objavio zatvaranje kancelarija , Engleskoj banci ne preostade drugo nego da tih pedeset pet hiljada livara uvede na račun dobitaka i gubitaka . Kada je krađa dobro i savesno isleđena , poslati su najveštiji agenti i detektivi u glavna pristaništa u Liverpulu , Glazgovu , Havru , Suecu , Brindiziju Njujorku itd . , uz obećanje da će u slučaju uspeha dobiti nagradu od dve hiljade livara i pet od sto od sume novca koji bude nađen .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Liverpul","sentence":"Pariz , Brindizi , Suec , Bombaj , Kalkutu , Hong - Kong , Jokohamu , San Francisko , Njujork , Liverpul , London , a koji je omogućivao lako izračunavanje gubitka i dobitka za svaki deo puta .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[-4.25,55.861111111]},"properties":{"qid":"Q4093","label":"Glasgow","wikidata_url":"https://www.wikidata.org/wiki/Q4093","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["city","lieutenancy area of Scotland","veliki grad","largest city"],"ner_label":"LOC","mention_count":1,"first_order":130,"first_mention":"Glazgovu","first_sentence":"Svežanj novčanica nije bio vraćen , i kada je veličanstveni časovnik iznad dvorane za primanje u pet časova zvonjenjem objavio zatvaranje kancelarija , Engleskoj banci ne preostade drugo nego da tih pedeset pet hiljada livara uvede na račun dobitaka i gubitaka . Kada je krađa dobro i savesno isleđena , poslati su najveštiji agenti i detektivi u glavna pristaništa u Liverpulu , Glazgovu , Havru , Suecu , Brindiziju Njujorku itd . , uz obećanje da će u slučaju uspeha dobiti nagradu od dve hiljade livara i pet od sto od sume novca koji bude nađen .","source_files":["I_Vern-all-56001-56500-ner.tsv"],"sample_mentions":[{"text":"Glazgovu","sentence":"Svežanj novčanica nije bio vraćen , i kada je veličanstveni časovnik iznad dvorane za primanje u pet časova zvonjenjem objavio zatvaranje kancelarija , Engleskoj banci ne preostade drugo nego da tih pedeset pet hiljada livara uvede na račun dobitaka i gubitaka . Kada je krađa dobro i savesno isleđena , poslati su najveštiji agenti i detektivi u glavna pristaništa u Liverpulu , Glazgovu , Havru , Suecu , Brindiziju Njujorku itd . , uz obećanje da će u slučaju uspeha dobiti nagradu od dve hiljade livara i pet od sto od sume novca koji bude nađen .","source_file":"I_Vern-all-56001-56500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[0.108055555,49.494166666]},"properties":{"qid":"Q42810","label":"Le Havre","wikidata_url":"https://www.wikidata.org/wiki/Q42810","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["commune of France","veliki grad","lučki grad"],"ner_label":"LOC","mention_count":1,"first_order":131,"first_mention":"Havru","first_sentence":"Svežanj novčanica nije bio vraćen , i kada je veličanstveni časovnik iznad dvorane za primanje u pet časova zvonjenjem objavio zatvaranje kancelarija , Engleskoj banci ne preostade drugo nego da tih pedeset pet hiljada livara uvede na račun dobitaka i gubitaka . Kada je krađa dobro i savesno isleđena , poslati su najveštiji agenti i detektivi u glavna pristaništa u Liverpulu , Glazgovu , Havru , Suecu , Brindiziju Njujorku itd . , uz obećanje da će u slučaju uspeha dobiti nagradu od dve hiljade livara i pet od sto od sume novca koji bude nađen .","source_files":["I_Vern-all-56001-56500-ner.tsv"],"sample_mentions":[{"text":"Havru","sentence":"Svežanj novčanica nije bio vraćen , i kada je veličanstveni časovnik iznad dvorane za primanje u pet časova zvonjenjem objavio zatvaranje kancelarija , Engleskoj banci ne preostade drugo nego da tih pedeset pet hiljada livara uvede na račun dobitaka i gubitaka . Kada je krađa dobro i savesno isleđena , poslati su najveštiji agenti i detektivi u glavna pristaništa u Liverpulu , Glazgovu , Havru , Suecu , Brindiziju Njujorku itd . , uz obećanje da će u slučaju uspeha dobiti nagradu od dve hiljade livara i pet od sto od sume novca koji bude nađen .","source_file":"I_Vern-all-56001-56500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[32.533333333,29.966666666]},"properties":{"qid":"Q134514","label":"Suec","wikidata_url":"https://www.wikidata.org/wiki/Q134514","annotation_types":[{"type":"LOC","count":26}],"wikidata_types":["city","veliki grad","lučki grad","kism"],"ner_label":"LOC","mention_count":26,"first_order":132,"first_mention":"Suecu","first_sentence":"Svežanj novčanica nije bio vraćen , i kada je veličanstveni časovnik iznad dvorane za primanje u pet časova zvonjenjem objavio zatvaranje kancelarija , Engleskoj banci ne preostade drugo nego da tih pedeset pet hiljada livara uvede na račun dobitaka i gubitaka . Kada je krađa dobro i savesno isleđena , poslati su najveštiji agenti i detektivi u glavna pristaništa u Liverpulu , Glazgovu , Havru , Suecu , Brindiziju Njujorku itd . , uz obećanje da će u slučaju uspeha dobiti nagradu od dve hiljade livara i pet od sto od sume novca koji bude nađen .","source_files":["I_Vern-all-56001-56500-ner.tsv","I_Vern-all-56501-57000-ner.tsv","I_Vern-all-57001-57500-ner.tsv"],"sample_mentions":[{"text":"Suecu","sentence":"Svežanj novčanica nije bio vraćen , i kada je veličanstveni časovnik iznad dvorane za primanje u pet časova zvonjenjem objavio zatvaranje kancelarija , Engleskoj banci ne preostade drugo nego da tih pedeset pet hiljada livara uvede na račun dobitaka i gubitaka . Kada je krađa dobro i savesno isleđena , poslati su najveštiji agenti i detektivi u glavna pristaništa u Liverpulu , Glazgovu , Havru , Suecu , Brindiziju Njujorku itd . , uz obećanje da će u slučaju uspeha dobiti nagradu od dve hiljade livara i pet od sto od sume novca koji bude nađen .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Sueca","sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Sueca","sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Suec","sentence":"Suec Londonu Rovanu , upravniku policije , centralna uprava , trg Skotland .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Suecu","sentence":"oktobra , oko jedanaest časova , pre podne , očekivali su u Suecu Mongoliju , brod Istočnog i poluostrvskog društva , gvozdeni brod na propeler sa spardekom sa nosivošću od dve hiljade osam stotina tona i sa snagom od pet stotina konja .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Sueca","sentence":"Mongolija je redovno saobraćala od Brindizija do Bombaja kroz Suecki kanal To beše jedan od najbržih brodova društva , koji je uvek premašivao propisnu brzinu , tj . deset milja između Brindizija i Sueca , i devet i po milja između Sueca i Bombaja .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Sueca","sentence":"Mongolija je redovno saobraćala od Brindizija do Bombaja kroz Suecki kanal To beše jedan od najbržih brodova društva , koji je uvek premašivao propisnu brzinu , tj . deset milja između Brindizija i Sueca , i devet i po milja između Sueca i Bombaja .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Suecu","sentence":"Jedan od te dvojice bio je konzularni agent Ujedinjenog Kraljevstva sa sedištem u Suecu , koji je svakodnevno posmatrao , uprkos nepovoljnim proricanjima engleske vlade i zlokobnim predskazivanjima inženjera Stefensona , prolaz engleskih brodova kroz taj kanal , kojim je , na taj način , skraćen za polovinu nekadašnji put iz Engleske u Indiju oko Rta dobre nade .","source_file":"I_Vern-all-56001-56500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[17.945833333,40.638333333]},"properties":{"qid":"Q13496","label":"Brindisi","wikidata_url":"https://www.wikidata.org/wiki/Q13496","annotation_types":[{"type":"LOC","count":9}],"wikidata_types":["varošica","comune of Italy"],"ner_label":"LOC","mention_count":9,"first_order":133,"first_mention":"Brindiziju","first_sentence":"Svežanj novčanica nije bio vraćen , i kada je veličanstveni časovnik iznad dvorane za primanje u pet časova zvonjenjem objavio zatvaranje kancelarija , Engleskoj banci ne preostade drugo nego da tih pedeset pet hiljada livara uvede na račun dobitaka i gubitaka . Kada je krađa dobro i savesno isleđena , poslati su najveštiji agenti i detektivi u glavna pristaništa u Liverpulu , Glazgovu , Havru , Suecu , Brindiziju Njujorku itd . , uz obećanje da će u slučaju uspeha dobiti nagradu od dve hiljade livara i pet od sto od sume novca koji bude nađen .","source_files":["I_Vern-all-56001-56500-ner.tsv","I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Brindiziju","sentence":"Svežanj novčanica nije bio vraćen , i kada je veličanstveni časovnik iznad dvorane za primanje u pet časova zvonjenjem objavio zatvaranje kancelarija , Engleskoj banci ne preostade drugo nego da tih pedeset pet hiljada livara uvede na račun dobitaka i gubitaka . Kada je krađa dobro i savesno isleđena , poslati su najveštiji agenti i detektivi u glavna pristaništa u Liverpulu , Glazgovu , Havru , Suecu , Brindiziju Njujorku itd . , uz obećanje da će u slučaju uspeha dobiti nagradu od dve hiljade livara i pet od sto od sume novca koji bude nađen .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Brindizija","sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Brindizija","sentence":"Mongolija je redovno saobraćala od Brindizija do Bombaja kroz Suecki kanal To beše jedan od najbržih brodova društva , koji je uvek premašivao propisnu brzinu , tj . deset milja između Brindizija i Sueca , i devet i po milja između Sueca i Bombaja .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Brindizija","sentence":"Mongolija je redovno saobraćala od Brindizija do Bombaja kroz Suecki kanal To beše jedan od najbržih brodova društva , koji je uvek premašivao propisnu brzinu , tj . deset milja između Brindizija i Sueca , i devet i po milja između Sueca i Bombaja .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Brindizija","sentence":"Dolazi li taj brod pravo iz Brindizija ?","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Brindizija","sentence":"Upravo iz Brindizija , gde je uzeo poštu za Indiju , a iz Brindizija je krenuo u subotu uveče u pet časova .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Brindizija","sentence":"Upravo iz Brindizija , gde je uzeo poštu za Indiju , a iz Brindizija je krenuo u subotu uveče u pet časova .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Brindizi","sentence":"oktobra u 6 časova izjutra . – Otišao iz Torina u petak u 7 časova i 20 minuta izjutra . – Došao u Brindizi u subotu 5 .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[-74.006111111,40.712777777]},"properties":{"qid":"Q60","label":"Njujork","wikidata_url":"https://www.wikidata.org/wiki/Q60","annotation_types":[{"type":"LOC","count":4}],"wikidata_types":["city","megacity","velegrad","Velegrad","city in the United States","veliki grad","lučki grad","city in the state of New York","largest city"],"ner_label":"LOC","mention_count":4,"first_order":134,"first_mention":"Njujorku","first_sentence":"Svežanj novčanica nije bio vraćen , i kada je veličanstveni časovnik iznad dvorane za primanje u pet časova zvonjenjem objavio zatvaranje kancelarija , Engleskoj banci ne preostade drugo nego da tih pedeset pet hiljada livara uvede na račun dobitaka i gubitaka . Kada je krađa dobro i savesno isleđena , poslati su najveštiji agenti i detektivi u glavna pristaništa u Liverpulu , Glazgovu , Havru , Suecu , Brindiziju Njujorku itd . , uz obećanje da će u slučaju uspeha dobiti nagradu od dve hiljade livara i pet od sto od sume novca koji bude nađen .","source_files":["I_Vern-all-56001-56500-ner.tsv","I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Njujorku","sentence":"Svežanj novčanica nije bio vraćen , i kada je veličanstveni časovnik iznad dvorane za primanje u pet časova zvonjenjem objavio zatvaranje kancelarija , Engleskoj banci ne preostade drugo nego da tih pedeset pet hiljada livara uvede na račun dobitaka i gubitaka . Kada je krađa dobro i savesno isleđena , poslati su najveštiji agenti i detektivi u glavna pristaništa u Liverpulu , Glazgovu , Havru , Suecu , Brindiziju Njujorku itd . , uz obećanje da će u slučaju uspeha dobiti nagradu od dve hiljade livara i pet od sto od sume novca koji bude nađen .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Njujorka","sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Njujorka","sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Njujork","sentence":"Pariz , Brindizi , Suec , Bombaj , Kalkutu , Hong - Kong , Jokohamu , San Francisko , Njujork , Liverpul , London , a koji je omogućivao lako izračunavanje gubitka i dobitka za svaki deo puta .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[81.8593,25.4892]},"properties":{"qid":"Q3612324","label":"Prayagraj (Allahabad)","wikidata_url":"https://www.wikidata.org/wiki/Q3612324","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["veliki grad"],"ner_label":"LOC","mention_count":1,"first_order":149,"first_mention":"Alahabada","first_sentence":"Zaista , gospodo , doda Džon Sulivan za osamdeset dana , otkada je između Rotala i Alahabada otvorena pruga \" Velike indijske poluostrvske železnice \" ;","source_files":["I_Vern-all-56001-56500-ner.tsv"],"sample_mentions":[{"text":"Alahabada","sentence":"Zaista , gospodo , doda Džon Sulivan za osamdeset dana , otkada je između Rotala i Alahabada otvorena pruga \" Velike indijske poluostrvske železnice \" ;","source_file":"I_Vern-all-56001-56500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[-1.510277777,48.635833333]},"properties":{"qid":"Q20892","label":"Le Mont-Saint-Michel","wikidata_url":"https://www.wikidata.org/wiki/Q20892","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["commune of France","car-free place"],"ner_label":"LOC","mention_count":1,"first_order":154,"first_mention":"Mon Senija","first_sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_files":["I_Vern-all-56001-56500-ner.tsv"],"sample_mentions":[{"text":"Mon Senija","sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_file":"I_Vern-all-56001-56500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[72.8775,19.075833333]},"properties":{"qid":"Q1156","label":"Mumbai","wikidata_url":"https://www.wikidata.org/wiki/Q1156","annotation_types":[{"type":"LOC","count":40}],"wikidata_types":["city","megacity","velegrad","business cluster","provincial capital"],"ner_label":"LOC","mention_count":40,"first_order":157,"first_mention":"Bombaja","first_sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_files":["I_Vern-all-56001-56500-ner.tsv","I_Vern-all-56501-57000-ner.tsv","I_Vern-all-57001-57500-ner.tsv"],"sample_mentions":[{"text":"Bombaja","sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Bombaja","sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Bombaj","sentence":"Odmah pošaljite nalog za njegovo hapšenje u Bombaj ( Engleska Indija ) .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Bombaja","sentence":"Mongolija je redovno saobraćala od Brindizija do Bombaja kroz Suecki kanal To beše jedan od najbržih brodova društva , koji je uvek premašivao propisnu brzinu , tj . deset milja između Brindizija i Sueca , i devet i po milja između Sueca i Bombaja .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Bombaja","sentence":"Mongolija je redovno saobraćala od Brindizija do Bombaja kroz Suecki kanal To beše jedan od najbržih brodova društva , koji je uvek premašivao propisnu brzinu , tj . deset milja između Brindizija i Sueca , i devet i po milja između Sueca i Bombaja .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Bombaj","sentence":"– Od Sueca do Adena , na kraju , Crvenog mora , računa se da ima hiljadu tri stotine deset milja , te je potrebno snabdeti se gorivom . a ide li taj brod iz Sueca pravo u Bombaj ?","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Bombaj","sentence":"U Bombaj .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Bombaj","sentence":"Pariz , Brindizi , Suec , Bombaj , Kalkutu , Hong - Kong , Jokohamu , San Francisko , Njujork , Liverpul , London , a koji je omogućivao lako izračunavanje gubitka i dobitka za svaki deo puta .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[88.37,22.5675]},"properties":{"qid":"Q1348","label":"Kolkata","wikidata_url":"https://www.wikidata.org/wiki/Q1348","annotation_types":[{"type":"LOC","count":20}],"wikidata_types":["megacity","velegrad","provincial capital","largest city","municipal corporation of West Bengal"],"ner_label":"LOC","mention_count":20,"first_order":159,"first_mention":"Kalkute","first_sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_files":["I_Vern-all-56001-56500-ner.tsv","I_Vern-all-56501-57000-ner.tsv","I_Vern-all-57001-57500-ner.tsv"],"sample_mentions":[{"text":"Kalkute","sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Kalkute","sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Kalkutu","sentence":"Pariz , Brindizi , Suec , Bombaj , Kalkutu , Hong - Kong , Jokohamu , San Francisko , Njujork , Liverpul , London , a koji je omogućivao lako izračunavanje gubitka i dobitka za svaki deo puta .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Kalkutu","sentence":"Jedni su išli u Bombaj , drugi u Kalkutu preko Bombaja , jer otkad železnički put ide preko cele širine Indijskog poluostrva , nije više potrebno obilaziti predgorje Cejlona .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Kalkuti","sentence":"Ona ima glavnog guvernera u Kalkuti , guvernera u Madrasu , u Bombaju i u Bengalu i jednog zamenika guvernera u Agri .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Kalkuti","sentence":"Uglavnom , pruga Velike indijske poluostrvske železnice ide ovako : polazeći sa Bombajskog ostrva ide preko Salceta , dolazi na kopno kod Teme , prelazi planinski lanac Zapadnog Gatesa , prolazi severoistočno do Burhampura , seče skoro nezavisnu teritoriju Bundelkunda , penje se do Alahabada , savija na istok , dopire kod Benaresa do Ganga , udaljuje se malo od njega i ponovo silazeći na jugoistok , preko Burdivana i francuskog grada Čandernagora , završava se u Kalkuti .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Kalkutu","sentence":"Bilo je četiri i po časa uveče kada su se putnici sa Mongolije iskrcali u Bombaju , a voz za Kalkutu polazio je tačno u osam časova .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Kalkute","sentence":"Međutim , prema poslednjim naređenjima koja mu je dao gospodar iskrcavajući se sa Mongolije , Paspartu je dobro razumeo da će s Bombajem biti kao i sa Suecom i Parizom , da se putovanje ovde neće završiti već da će se nastaviti bar do Kalkute , a možda i dalje . I on poče razmišljati nije li ta opklada gospodina Foga potpuno ozbiljna stvar , nije li mu sudbina namenila da putuje oko sveta za osamdeset dana , njemu koji je hteo da živi na miru .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[114.158611111,22.278333333]},"properties":{"qid":"Q8646","label":"Hong Kong","wikidata_url":"https://www.wikidata.org/wiki/Q8646","annotation_types":[{"type":"LOC","count":10}],"wikidata_types":["city","grad-država","zavisna teritorija","velegrad","Velegrad","special administrative region of China","veliki grad","nationality for sports","customs territory of China"],"ner_label":"LOC","mention_count":10,"first_order":161,"first_mention":"Hong-Konga","first_sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_files":["I_Vern-all-56001-56500-ner.tsv","I_Vern-all-56501-57000-ner.tsv","I_Vern-all-57001-57500-ner.tsv"],"sample_mentions":[{"text":"Hong-Konga","sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Hong-Konga","sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Hong-Kong","sentence":"Pariz , Brindizi , Suec , Bombaj , Kalkutu , Hong - Kong , Jokohamu , San Francisko , Njujork , Liverpul , London , a koji je omogućivao lako izračunavanje gubitka i dobitka za svaki deo puta .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Hong-Kong","sentence":"U dobitku sam čitava dva dana koja mogu žrtvovati . Ima jedan brod koji polazi iz Kalkute za Hong - Kong 25 - og .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Hong-Kong","sentence":"Fileas Fog je , dakle , na vreme mogao stići da uhvati brod koji je polazio tek sutradan , 25 . oktobra , u podne , za Hong - Kong .","source_file":"I_Vern-all-57001-57500-ner.tsv"},{"text":"Hong-Kong","sentence":"Fileas Fog razumede šta se dešava u duši gospođe Aude i da bi je umirio , ponudi joj , uostalom vrlo hladno , da je odvede u Hong - Kong , gde bi mogla ostati dok stvar ne padne u zaborav .","source_file":"I_Vern-all-57001-57500-ner.tsv"},{"text":"Hong-Kongu","sentence":"Baš u Hong - Kongu ima jednog rođaka , Parsa kao i ona , jednog od prvih trgovaca u tom gradu , koji je , iako na kineskoj obali , sasvim engleski .","source_file":"I_Vern-all-57001-57500-ner.tsv"},{"text":"Hong-Kong","sentence":"Brod za Hong - Kong polazio je tek .","source_file":"I_Vern-all-57001-57500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[103.451944444,35.844722222]},"properties":{"qid":"Q148","label":"Kina","wikidata_url":"https://www.wikidata.org/wiki/Q148","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["country","suverena država"],"ner_label":"LOC","mention_count":1,"first_order":162,"first_mention":"Kini","first_sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_files":["I_Vern-all-56001-56500-ner.tsv"],"sample_mentions":[{"text":"Kini","sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_file":"I_Vern-all-56001-56500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[139.634222222,35.450333333]},"properties":{"qid":"Q38283","label":"Yokohama","wikidata_url":"https://www.wikidata.org/wiki/Q38283","annotation_types":[{"type":"LOC","count":3}],"wikidata_types":["city of Japan","satellite city","commuter town","city designated by government ordinance","lučki grad","prefectural capital of Japan"],"ner_label":"LOC","mention_count":3,"first_order":164,"first_mention":"Jokohame","first_sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_files":["I_Vern-all-56001-56500-ner.tsv","I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Jokohame","sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Jokohame","sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Jokohamu","sentence":"Pariz , Brindizi , Suec , Bombaj , Kalkutu , Hong - Kong , Jokohamu , San Francisko , Njujork , Liverpul , London , a koji je omogućivao lako izračunavanje gubitka i dobitka za svaki deo puta .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[136.0,35.0]},"properties":{"qid":"Q17","label":"Japan","wikidata_url":"https://www.wikidata.org/wiki/Q17","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["country","ostrvska država","suverena država"],"ner_label":"LOC","mention_count":1,"first_order":165,"first_mention":"Japanu","first_sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_files":["I_Vern-all-56001-56500-ner.tsv"],"sample_mentions":[{"text":"Japanu","sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_file":"I_Vern-all-56001-56500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[-122.419444444,37.775]},"properties":{"qid":"Q62","label":"San Francisco","wikidata_url":"https://www.wikidata.org/wiki/Q62","annotation_types":[{"type":"LOC","count":3}],"wikidata_types":["city in the United States","veliki grad","sanctuary city","charter city and county"],"ner_label":"LOC","mention_count":3,"first_order":167,"first_mention":"San Franciska","first_sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_files":["I_Vern-all-56001-56500-ner.tsv","I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"San Franciska","sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"San Franciska","sentence":"evo proračuna Morning kronikala : Od Londona do Sueca preko Mon Senija i Brindizija , železnicom i parobrodom 7 dana Od Sueca do Bombaja , parobrodom 13 dana Od Bombaja do Kalkute , železnicom 3 dana Od Kalkute do Hong - Konga ( u Kini ) , brodom 13 dana Od Hong - Konga do Jokohame ( u Japanu ) , brodom 6 dana Od Jokohame do , San Franciska , brodom 22 dana Od San Franciska do Njujorka , železnicom 7 dana Od Njujorka do Londona , parobrodom i železnicom 9 dana Ukupno 80 dana Da , osamdeset dana , uzviknu Endrju Stjuart , odnevši iz nepažnje adut kartu ali ne računajući rđavo vreme , protivne vetrove , brodolome , iskakanje voza iz šina itd .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"San Francisko","sentence":"Pariz , Brindizi , Suec , Bombaj , Kalkutu , Hong - Kong , Jokohamu , San Francisko , Njujork , Liverpul , London , a koji je omogućivao lako izračunavanje gubitka i dobitka za svaki deo puta .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[1.312222222,51.1275]},"properties":{"qid":"Q179224","label":"Dover","wikidata_url":"https://www.wikidata.org/wiki/Q179224","annotation_types":[{"type":"LOC","count":3}],"wikidata_types":["varošica","market town"],"ner_label":"LOC","mention_count":3,"first_order":186,"first_mention":"Dovera","first_sentence":"– Voz iz Dovera polazi u osam časova i četrdeset pet minuta .","source_files":["I_Vern-all-56001-56500-ner.tsv"],"sample_mentions":[{"text":"Dovera","sentence":"– Voz iz Dovera polazi u osam časova i četrdeset pet minuta .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Dover","sentence":"– Kroz deset minuta putujemo za Dover i Kale .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Dover","sentence":"Idu za Dover , dobro .","source_file":"I_Vern-all-56001-56500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[1.855555555,50.9475]},"properties":{"qid":"Q6454","label":"Calais","wikidata_url":"https://www.wikidata.org/wiki/Q6454","annotation_types":[{"type":"LOC","count":2}],"wikidata_types":["city","commune of France","border city","Roman city"],"ner_label":"LOC","mention_count":2,"first_order":209,"first_mention":"Kale","first_sentence":"– Kroz deset minuta putujemo za Dover i Kale .","source_files":["I_Vern-all-56001-56500-ner.tsv"],"sample_mentions":[{"text":"Kale","sentence":"– Kroz deset minuta putujemo za Dover i Kale .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Kale","sentence":"U Kale , lepo .","source_file":"I_Vern-all-56001-56500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[-0.123611111,51.5075]},"properties":{"qid":"Q801128","label":"Charing Cross railway station","wikidata_url":"https://www.wikidata.org/wiki/Q801128","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["dead-end railway station","železnička stanica","zgrada železničke stanice","station located on surface"],"ner_label":"LOC","mention_count":1,"first_order":231,"first_mention":"Čering-Kros","first_sentence":"Fileas Fog i njegov sluga popeše se u jedna od njih , i ova se brzo uputiše ka železničkoj stanici Čering - Kros od koje polazi jedna pruga jugoistočne železnice .","source_files":["I_Vern-all-56001-56500-ner.tsv"],"sample_mentions":[{"text":"Čering-Kros","sentence":"Fileas Fog i njegov sluga popeše se u jedna od njih , i ova se brzo uputiše ka železničkoj stanici Čering - Kros od koje polazi jedna pruga jugoistočne železnice .","source_file":"I_Vern-all-56001-56500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[-0.0544,51.4254]},"properties":{"qid":"Q2104233","label":"Sydenham","wikidata_url":"https://www.wikidata.org/wiki/Q2104233","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["area of London"],"ner_label":"LOC","mention_count":1,"first_order":247,"first_mention":"Sajdenhem","first_sentence":"Voz još nije prošao kroz Sajdenhem , kad Paspartu , sav očajan , kriknu .","source_files":["I_Vern-all-56001-56500-ner.tsv"],"sample_mentions":[{"text":"Sajdenhem","sentence":"Voz još nije prošao kroz Sajdenhem , kad Paspartu , sav očajan , kriknu .","source_file":"I_Vern-all-56001-56500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[83.0,22.8]},"properties":{"qid":"Q668","label":"Indija","wikidata_url":"https://www.wikidata.org/wiki/Q668","annotation_types":[{"type":"LOC","count":43}],"wikidata_types":["country","suverena država"],"ner_label":"LOC","mention_count":43,"first_order":274,"first_mention":"Indiju","first_sentence":"Prema tome članku sve je bilo protiv Fileasa Foga , i ljudi i priroda . Da bi plan mogao uspeti , trebalo je pretpostaviti čudnovato poklapanje časova odlaska i dolaska , poklapanje koje nije postojalo i nije moglo postojati U najgorem slučaju , u Evropi , gde su u pitanju putevi srednje udaljenosti , može se računati sa dolaskom vozova u određeni čas , ali kad se računa tri dana kroz Indiju , sedam dana za prolaz kroz Sjedinjene Države , zar se na njihovoj tačnosti može osnivati rešavanje takvog problema ?","source_files":["I_Vern-all-56001-56500-ner.tsv","I_Vern-all-56501-57000-ner.tsv","I_Vern-all-57001-57500-ner.tsv"],"sample_mentions":[{"text":"Indiju","sentence":"Prema tome članku sve je bilo protiv Fileasa Foga , i ljudi i priroda . Da bi plan mogao uspeti , trebalo je pretpostaviti čudnovato poklapanje časova odlaska i dolaska , poklapanje koje nije postojalo i nije moglo postojati U najgorem slučaju , u Evropi , gde su u pitanju putevi srednje udaljenosti , može se računati sa dolaskom vozova u određeni čas , ali kad se računa tri dana kroz Indiju , sedam dana za prolaz kroz Sjedinjene Države , zar se na njihovoj tačnosti može osnivati rešavanje takvog problema ?","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Indija","sentence":"Odmah pošaljite nalog za njegovo hapšenje u Bombaj ( Engleska Indija ) .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Indiju","sentence":"Jedan od te dvojice bio je konzularni agent Ujedinjenog Kraljevstva sa sedištem u Suecu , koji je svakodnevno posmatrao , uprkos nepovoljnim proricanjima engleske vlade i zlokobnim predskazivanjima inženjera Stefensona , prolaz engleskih brodova kroz taj kanal , kojim je , na taj način , skraćen za polovinu nekadašnji put iz Engleske u Indiju oko Rta dobre nade .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Indiju","sentence":"Upravo iz Brindizija , gde je uzeo poštu za Indiju , a iz Brindizija je krenuo u subotu uveče u pet časova .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Indiji","sentence":"– On dobro zna da neće biti siguran u Indiji jer je to engleska zemlja .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Indije","sentence":"Policijski inspektor ostade sam , obuzet grozničavim nestrpljenjem , sa čudnovatim predosećajem da njegov lopov mora biti na brodu Mongolija , i zaista , ako je taj lupež otišao iz Engleske sa namerom da stigne u Novi svet , morao je putu preko Atlantskog okeana pretpostaviti put preko Indije koji je manje nadziravan , a gde je i nadzor otežan .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Bombaj","sentence":"Potrebno vam je donde još oko desetak dana morem . a šta vi mislite , gde je taj Bombaj ?","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Indiji","sentence":"U Indiji .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[-98.5795,39.828175]},"properties":{"qid":"Q30","label":"Sjedinjene Američke Države","wikidata_url":"https://www.wikidata.org/wiki/Q30","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["country","superpower","suverena država"],"ner_label":"LOC","mention_count":1,"first_order":275,"first_mention":"Sjedinjene Države","first_sentence":"Prema tome članku sve je bilo protiv Fileasa Foga , i ljudi i priroda . Da bi plan mogao uspeti , trebalo je pretpostaviti čudnovato poklapanje časova odlaska i dolaska , poklapanje koje nije postojalo i nije moglo postojati U najgorem slučaju , u Evropi , gde su u pitanju putevi srednje udaljenosti , može se računati sa dolaskom vozova u određeni čas , ali kad se računa tri dana kroz Indiju , sedam dana za prolaz kroz Sjedinjene Države , zar se na njihovoj tačnosti može osnivati rešavanje takvog problema ?","source_files":["I_Vern-all-56001-56500-ner.tsv"],"sample_mentions":[{"text":"Sjedinjene Države","sentence":"Prema tome članku sve je bilo protiv Fileasa Foga , i ljudi i priroda . Da bi plan mogao uspeti , trebalo je pretpostaviti čudnovato poklapanje časova odlaska i dolaska , poklapanje koje nije postojalo i nije moglo postojati U najgorem slučaju , u Evropi , gde su u pitanju putevi srednje udaljenosti , može se računati sa dolaskom vozova u određeni čas , ali kad se računa tri dana kroz Indiju , sedam dana za prolaz kroz Sjedinjene Države , zar se na njihovoj tačnosti može osnivati rešavanje takvog problema ?","source_file":"I_Vern-all-56001-56500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[-5.0,57.0]},"properties":{"qid":"Q22","label":"Scotland","wikidata_url":"https://www.wikidata.org/wiki/Q22","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["constituent country of the United Kingdom"],"ner_label":"LOC","mention_count":1,"first_order":292,"first_mention":"Skotland","first_sentence":"Suec Londonu Rovanu , upravniku policije , centralna uprava , trg Skotland .","source_files":["I_Vern-all-56001-56500-ner.tsv"],"sample_mentions":[{"text":"Skotland","sentence":"Suec Londonu Rovanu , upravniku policije , centralna uprava , trg Skotland .","source_file":"I_Vern-all-56001-56500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[32.344166666,30.705]},"properties":{"qid":"Q899","label":"Suez Canal","wikidata_url":"https://www.wikidata.org/wiki/Q899","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["ship canal"],"ner_label":"LOC","mention_count":1,"first_order":304,"first_mention":"Suecki kanal","first_sentence":"Mongolija je redovno saobraćala od Brindizija do Bombaja kroz Suecki kanal To beše jedan od najbržih brodova društva , koji je uvek premašivao propisnu brzinu , tj . deset milja između Brindizija i Sueca , i devet i po milja između Sueca i Bombaja .","source_files":["I_Vern-all-56001-56500-ner.tsv"],"sample_mentions":[{"text":"Suecki kanal","sentence":"Mongolija je redovno saobraćala od Brindizija do Bombaja kroz Suecki kanal To beše jedan od najbržih brodova društva , koji je uvek premašivao propisnu brzinu , tj . deset milja između Brindizija i Sueca , i devet i po milja između Sueca i Bombaja .","source_file":"I_Vern-all-56001-56500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[18.471944444,-34.358055555]},"properties":{"qid":"Q4092","label":"Cape of Good Hope","wikidata_url":"https://www.wikidata.org/wiki/Q4092","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["cape","headland"],"ner_label":"LOC","mention_count":1,"first_order":316,"first_mention":"Rta dobre nade","first_sentence":"Jedan od te dvojice bio je konzularni agent Ujedinjenog Kraljevstva sa sedištem u Suecu , koji je svakodnevno posmatrao , uprkos nepovoljnim proricanjima engleske vlade i zlokobnim predskazivanjima inženjera Stefensona , prolaz engleskih brodova kroz taj kanal , kojim je , na taj način , skraćen za polovinu nekadašnji put iz Engleske u Indiju oko Rta dobre nade .","source_files":["I_Vern-all-56001-56500-ner.tsv"],"sample_mentions":[{"text":"Rta dobre nade","sentence":"Jedan od te dvojice bio je konzularni agent Ujedinjenog Kraljevstva sa sedištem u Suecu , koji je svakodnevno posmatrao , uprkos nepovoljnim proricanjima engleske vlade i zlokobnim predskazivanjima inženjera Stefensona , prolaz engleskih brodova kroz taj kanal , kojim je , na taj način , skraćen za polovinu nekadašnji put iz Engleske u Indiju oko Rta dobre nade .","source_file":"I_Vern-all-56001-56500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[32.306111111,31.2625]},"properties":{"qid":"Q134509","label":"Port Said","wikidata_url":"https://www.wikidata.org/wiki/Q134509","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["city","veliki grad","lučki grad"],"ner_label":"LOC","mention_count":1,"first_order":319,"first_mention":"Port Saida","first_sentence":"Juče je bio zapažen u zalivu Port Saida , a sto šezdeset kilometara kroz kanal ne predstavlja ništa za takav brod .","source_files":["I_Vern-all-56001-56500-ner.tsv"],"sample_mentions":[{"text":"Port Saida","sentence":"Juče je bio zapažen u zalivu Port Saida , a sto šezdeset kilometara kroz kanal ne predstavlja ništa za takav brod .","source_file":"I_Vern-all-56001-56500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[38.0,22.0]},"properties":{"qid":"Q23406","label":"Crveno more","wikidata_url":"https://www.wikidata.org/wiki/Q23406","annotation_types":[{"type":"LOC","count":6}],"wikidata_types":["more"],"ner_label":"LOC","mention_count":6,"first_order":325,"first_mention":"Crvenog mora","first_sentence":"Na pučini Crvenog mora njihalo se više ribarskih i obalskih brodova , od kojih je poneki sačuvao u svom izgledu elegantni oblik antičke galije .","source_files":["I_Vern-all-56001-56500-ner.tsv","I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Crvenog mora","sentence":"Na pučini Crvenog mora njihalo se više ribarskih i obalskih brodova , od kojih je poneki sačuvao u svom izgledu elegantni oblik antičke galije .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Crvenog mora","sentence":"– Od Sueca do Adena , na kraju , Crvenog mora , računa se da ima hiljadu tri stotine deset milja , te je potrebno snabdeti se gorivom . a ide li taj brod iz Sueca pravo u Bombaj ?","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Crvenog mora","sentence":"Crvenog mora .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Crveno","sentence":"IX GLAVA u kojoj Crveno i Indijsko more pokazuju naklonost prema namerama Fileasa Foga .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Crveno more","sentence":"Svirala je muzika i igralo se kad god je more dopuštalo . Ali Crveno more je veoma ćudljivo i često pakosno , kao svi ti uzani dugački zalivi .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Crveno more","sentence":"Nije mnogo obraćao pažnju na , Crveno more , bogato uspomenama , tu pozornicu prvih istorijskih prizora čovečanstva .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[108.0,35.0]},"properties":{"qid":"Q48","label":"Asia","wikidata_url":"https://www.wikidata.org/wiki/Q48","annotation_types":[{"type":"LOC","count":2}],"wikidata_types":["continent","region","part of the world"],"ner_label":"LOC","mention_count":2,"first_order":334,"first_mention":"Aziji","first_sentence":"E , reče Fiks ako je lopov pošao tim putem i tim brodom , mora da ima u planu iskrcavanje u Suecu da bi drugim putem došao do holandskih i francuskih poseda u Aziji .","source_files":["I_Vern-all-56001-56500-ner.tsv","I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Aziji","sentence":"E , reče Fiks ako je lopov pošao tim putem i tim brodom , mora da ima u planu iskrcavanje u Suecu da bi drugim putem došao do holandskih i francuskih poseda u Aziji .","source_file":"I_Vern-all-56001-56500-ner.tsv"},{"text":"Aziji","sentence":"U Aziji ?","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[-30.0,0.0]},"properties":{"qid":"Q97","label":"Atlantic Ocean","wikidata_url":"https://www.wikidata.org/wiki/Q97","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["ocean"],"ner_label":"LOC","mention_count":1,"first_order":341,"first_mention":"Atlantskog okeana","first_sentence":"Policijski inspektor ostade sam , obuzet grozničavim nestrpljenjem , sa čudnovatim predosećajem da njegov lopov mora biti na brodu Mongolija , i zaista , ako je taj lupež otišao iz Engleske sa namerom da stigne u Novi svet , morao je putu preko Atlantskog okeana pretpostaviti put preko Indije koji je manje nadziravan , a gde je i nadzor otežan .","source_files":["I_Vern-all-56001-56500-ner.tsv"],"sample_mentions":[{"text":"Atlantskog okeana","sentence":"Policijski inspektor ostade sam , obuzet grozničavim nestrpljenjem , sa čudnovatim predosećajem da njegov lopov mora biti na brodu Mongolija , i zaista , ako je taj lupež otišao iz Engleske sa namerom da stigne u Novi svet , morao je putu preko Atlantskog okeana pretpostaviti put preko Indije koji je manje nadziravan , a gde je i nadzor otežan .","source_file":"I_Vern-all-56001-56500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[105.0,46.0]},"properties":{"qid":"Q711","label":"Mongolija","wikidata_url":"https://www.wikidata.org/wiki/Q711","annotation_types":[{"type":"LOC","count":22}],"wikidata_types":["country","kontinentalna država","suverena država"],"ner_label":"LOC","mention_count":22,"first_order":395,"first_mention":"Mongoliju","first_sentence":"Tu izda neka naređenja svome sluzi , zatim se ukrca u jedan čamac i vrati na Mongoliju , gde uđe u svoju kabinu .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Mongoliju","sentence":"Tu izda neka naređenja svome sluzi , zatim se ukrca u jedan čamac i vrati na Mongoliju , gde uđe u svoju kabinu .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Mongoliju","sentence":"– Ukrcao se na Mongoliju u subotu u 5 časova po podne .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Mongolije","sentence":"Evo , obećao je mehaničaru Mongolije veličanstvenu nagradu ako stignemo u Bombaj pre redovnog vremena !","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Mongolije","sentence":"Fiks ostavi svoga sagovornika da kupuje , preporuči mu da ne propusti polazak Mongolije , a on se hitro vrati u konzulat .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Mongoliju","sentence":"Poslaću jedan brzojav u London sa hitnom molbom da mi se uputi nalog za hapšenje u Bombaj , ukrcaću se na Mongoliju , pratiću svog lopova do Indije i tako , u toj engleskoj zemlji , učtivo ću mu pristupiti s nalogom u rukama i staviti mu ruku na rame .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Mongoliju","sentence":"Četvrt časa kasnije Fiks se sa lakim prtljagom u ruci , inače dobro snabdeven novcem , ukrcao na Mongoliju i uskoro je taj brzi brod plovio punom parom vodama .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Mongolija","sentence":"Mongolija je sa dobro loženim kazanima plovila tako da stigne pre određenog vremena .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Mongolije","sentence":"Među putnicima Mongolije bilo je raznih civilnih činovnika i oficira svih činova .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[7.676111111,45.079166666]},"properties":{"qid":"Q495","label":"Turin","wikidata_url":"https://www.wikidata.org/wiki/Q495","annotation_types":[{"type":"LOC","count":2}],"wikidata_types":["comune of Italy","veliki grad"],"ner_label":"LOC","mention_count":2,"first_order":399,"first_mention":"Torino","first_sentence":"oktobra u 7 časova i 30 minuta izjutra . – Otišao iz Pariza u četvrtak u 8 časova i 40 minuta izjutra . – Došao preko Mon Senija u Torino u petak 4 .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Torino","sentence":"oktobra u 7 časova i 30 minuta izjutra . – Otišao iz Pariza u četvrtak u 8 časova i 40 minuta izjutra . – Došao preko Mon Senija u Torino u petak 4 .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Torina","sentence":"oktobra u 6 časova izjutra . – Otišao iz Torina u petak u 7 časova i 20 minuta izjutra . – Došao u Brindizi u subotu 5 .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[29.0,27.0]},"properties":{"qid":"Q79","label":"Egipat","wikidata_url":"https://www.wikidata.org/wiki/Q79","annotation_types":[{"type":"LOC","count":3}],"wikidata_types":["country","transkontinentalna država","suverena država","Mediterranean country"],"ner_label":"LOC","mention_count":3,"first_order":430,"first_mention":"Egiptu","first_sentence":"U Egiptu ?","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Egiptu","sentence":"U Egiptu ?","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Egiptu","sentence":"U Egiptu , svakako . I u Africi ?","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Egiptu","sentence":"Sutradan po odlasku iz Sueca , 10 . oktobra , sreo je na palubi , sa izvesnim zadovoljstvom , uslužnog čoveka kome se bio obratio kada se iskrcao u Egiptu .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[15.0,0.0]},"properties":{"qid":"Q15","label":"Africa","wikidata_url":"https://www.wikidata.org/wiki/Q15","annotation_types":[{"type":"LOC","count":3}],"wikidata_types":["continent","region","geografski položaj"],"ner_label":"LOC","mention_count":3,"first_order":432,"first_mention":"Africi","first_sentence":"U Egiptu , svakako . I u Africi ?","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Africi","sentence":"U Egiptu , svakako . I u Africi ?","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Africi","sentence":"U Africi .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Africi","sentence":"U Africi !","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[2.394166666,48.861111111]},"properties":{"qid":"Q311","label":"Père Lachaise Cemetery","wikidata_url":"https://www.wikidata.org/wiki/Q311","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["cemetery"],"ner_label":"LOC","mention_count":1,"first_order":438,"first_mention":"Per Lašez","first_sentence":"Baš mi je žao . Želeo sam da ponovo vidim Per Lašez i cirkus na .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Per Lašez","sentence":"Baš mi je žao . Želeo sam da ponovo vidim Per Lašez i cirkus na .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[2.30786,48.86967]},"properties":{"qid":"Q550","label":"avenue des Champs-Élysées","wikidata_url":"https://www.wikidata.org/wiki/Q550","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["boulevard","znamenitost","avenue"],"ner_label":"LOC","mention_count":1,"first_order":439,"first_mention":"Jelisejskim poljima","first_sentence":"Jelisejskim poljima .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Jelisejskim poljima","sentence":"Jelisejskim poljima .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[80.0,-20.0]},"properties":{"qid":"Q1239","label":"Indian Ocean","wikidata_url":"https://www.wikidata.org/wiki/Q1239","annotation_types":[{"type":"LOC","count":3}],"wikidata_types":["more","ocean","region"],"ner_label":"LOC","mention_count":3,"first_order":511,"first_mention":"Indijsko more","first_sentence":"IX GLAVA u kojoj Crveno i Indijsko more pokazuju naklonost prema namerama Fileasa Foga .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Indijsko more","sentence":"IX GLAVA u kojoj Crveno i Indijsko more pokazuju naklonost prema namerama Fileasa Foga .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Indijskom okeanu","sentence":"Indijskom okeanu .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Indijski okean","sentence":"Uostalom , Indijski okean bio joj je naklonjen .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[45.033333333,12.8]},"properties":{"qid":"Q131694","label":"Aden","wikidata_url":"https://www.wikidata.org/wiki/Q131694","annotation_types":[{"type":"LOC","count":4}],"wikidata_types":["city","naselje","veliki grad","former capital"],"ner_label":"LOC","mention_count":4,"first_order":514,"first_mention":"Adena","first_sentence":"Udaljenost između Sueca i Adena iznosi tačno hiljadu tri stotine deset milja i plovidbeni propisi Društva dopuštaju svojim brodovima da taj put pređu za sto trideset osam časova .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Adena","sentence":"Udaljenost između Sueca i Adena iznosi tačno hiljadu tri stotine deset milja i plovidbeni propisi Društva dopuštaju svojim brodovima da taj put pređu za sto trideset osam časova .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Aden","sentence":"Uostalom , umesto da stigne u Aden tek 15 . oktobra izjutra , Mongolija je stigla tamo već 14 - og uveče .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Adena","sentence":"Paspartu ipak prošeta , po svom običaju , kroz gomilu Somuna , Banjajaca , Parsa , Jevreja , Arapa , Evropljana , koji sačinjavaju onih dvadeset i pet hiljada stanovnika Adena .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Adena","sentence":"Bilo joj je određeno sto šezdeset i osam časova za put od Adena do Bombaja .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[78.0,18.0]},"properties":{"qid":"Q1249523","label":"Indian Peninsula","wikidata_url":"https://www.wikidata.org/wiki/Q1249523","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["peninsula"],"ner_label":"LOC","mention_count":1,"first_order":520,"first_mention":"Indijskog poluostrva","first_sentence":"Jedni su išli u Bombaj , drugi u Kalkutu preko Bombaja , jer otkad železnički put ide preko cele širine Indijskog poluostrva , nije više potrebno obilaziti predgorje Cejlona .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Indijskog poluostrva","sentence":"Jedni su išli u Bombaj , drugi u Kalkutu preko Bombaja , jer otkad železnički put ide preko cele širine Indijskog poluostrva , nije više potrebno obilaziti predgorje Cejlona .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[81.0,7.0]},"properties":{"qid":"Q854","label":"Šri Lanka","wikidata_url":"https://www.wikidata.org/wiki/Q854","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["country","ostrvska država","suverena država"],"ner_label":"LOC","mention_count":1,"first_order":521,"first_mention":"Cejlona","first_sentence":"Jedni su išli u Bombaj , drugi u Kalkutu preko Bombaja , jer otkad železnički put ide preko cele širine Indijskog poluostrva , nije više potrebno obilaziti predgorje Cejlona .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Cejlona","sentence":"Jedni su išli u Bombaj , drugi u Kalkutu preko Bombaja , jer otkad železnički put ide preko cele širine Indijskog poluostrva , nije više potrebno obilaziti predgorje Cejlona .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[43.333333333,12.583333333]},"properties":{"qid":"Q83318","label":"Bab-el-Mandeb","wikidata_url":"https://www.wikidata.org/wiki/Q83318","annotation_types":[{"type":"LOC","count":2}],"wikidata_types":["strait"],"ner_label":"LOC","mention_count":2,"first_order":532,"first_mention":"Bab-el-Mandeb","first_sentence":"Međutim , uprkos buri i oluji , gonjen svojom moćnom mašinom , brod je jurio bez zadocnjenja prema moreuzu Bab - el - Mandeb .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Bab-el-Mandeb","sentence":"Međutim , uprkos buri i oluji , gonjen svojom moćnom mašinom , brod je jurio bez zadocnjenja prema moreuzu Bab - el - Mandeb .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Bab-el-Mandeb","sentence":"Sledeće noći Mongolija prođe kroz moreuz Bab - el - Mandeb , čije ime na arapskom znači vrata suza , a sutradan 14 - og uplovi u pristanište za morske brodove severozapadno od adenske luke .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[52.0,26.0]},"properties":{"qid":"Q34675","label":"Persian Gulf","wikidata_url":"https://www.wikidata.org/wiki/Q34675","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["more","gulf"],"ner_label":"LOC","mention_count":1,"first_order":537,"first_mention":"Arabijskog zaliva","first_sentence":"Nije mislio ni na opasnosti tog Arabijskog zaliva , o kome su antički istoričari Strabon , Arijen , Artemidor , Edrizi uvek govorili sa strahom i na koje su moreplovci nekad usuđivali poći samo kada bi žrtvama posvetili svoju plovidbu .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Arabijskog zaliva","sentence":"Nije mislio ni na opasnosti tog Arabijskog zaliva , o kome su antički istoričari Strabon , Arijen , Artemidor , Edrizi uvek govorili sa strahom i na koje su moreplovci nekad usuđivali poći samo kada bi žrtvama posvetili svoju plovidbu .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[83.012777777,25.318888888]},"properties":{"qid":"Q79980","label":"Varanasi","wikidata_url":"https://www.wikidata.org/wiki/Q79980","annotation_types":[{"type":"LOC","count":6}],"wikidata_types":["city","holy city"],"ner_label":"LOC","mention_count":6,"first_order":543,"first_mention":"Benares","first_sentence":"Da ! Našao je partnere isto tako strasne kao i on : jednog poreznika koji je išao na svoju dužnost u Gou , jednog ministra , propovednika Decima Smita koji se vraćao u Bombaj i jednog brigadnog generala engleske vojske koji je išao svom korpusu u Benares .","source_files":["I_Vern-all-56501-57000-ner.tsv","I_Vern-all-57001-57500-ner.tsv"],"sample_mentions":[{"text":"Benares","sentence":"Da ! Našao je partnere isto tako strasne kao i on : jednog poreznika koji je išao na svoju dužnost u Gou , jednog ministra , propovednika Decima Smita koji se vraćao u Bombaj i jednog brigadnog generala engleske vojske koji je išao svom korpusu u Benares .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Benaresa","sentence":"Uglavnom , pruga Velike indijske poluostrvske železnice ide ovako : polazeći sa Bombajskog ostrva ide preko Salceta , dolazi na kopno kod Teme , prelazi planinski lanac Zapadnog Gatesa , prolazi severoistočno do Burhampura , seče skoro nezavisnu teritoriju Bundelkunda , penje se do Alahabada , savija na istok , dopire kod Benaresa do Ganga , udaljuje se malo od njega i ponovo silazeći na jugoistok , preko Burdivana i francuskog grada Čandernagora , završava se u Kalkuti .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Benaresa","sentence":"To beše brigadni general ser Fransis Kromerti , jedan od partnera gospodina Foga na putu od Sueca do Bombaja , koji se vraćao svojim trupama smeštenim blizu Benaresa .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Benaresu","sentence":"Posle nekoliko trenutaka Fileas Fog , ser Fransis Kromerti i Paspartu , smešteni u udobnom vagonu u kojem je gospođa Auda zauzela najbolje mesto , jurili su punom parom ka Benaresu .","source_file":"I_Vern-all-57001-57500-ner.tsv"},{"text":"Benaresa","sentence":"Od Benaresa pruga je išla jednim delom dolinom Ganga .","source_file":"I_Vern-all-57001-57500-ner.tsv"},{"text":"Benaresa","sentence":"Putnici jedva videše Šunar , negdašnju tvrđavu radže od Behara , na dvadeset milja jugoistočno od Benaresa , Gazepur i njegove važne fabrike ružine vodice , grob lorda Kornvalisa , koji leži na levoj obali Ganga , utvrđenje Buksar , Patnu , veliko industrijsko i trgovačko središte u kome je glavno tržište opijuma u Indiji , Mangir , grad više nego evropski , engleski kao Mančester ili Birmingam , čuven po svojim livnicama gvožđa , fabrikama raznih sečiva i hladnog oružja , čiji visoki dimnjaci prljaju crnim dimom Bramino nebo - pravi pištolj u zemlji snova !","source_file":"I_Vern-all-57001-57500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[27.027777777,58.663055555]},"properties":{"qid":"Q12370427","label":"Moku","wikidata_url":"https://www.wikidata.org/wiki/Q12370427","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["village"],"ner_label":"LOC","mention_count":1,"first_order":588,"first_mention":"Moku","first_sentence":"Trinaestog opaziše Moku , koja se ukaza oivičena porušenim zidinama , iznad kojih se uzdizalo nekoliko zelenih urmi .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Moku","sentence":"Trinaestog opaziše Moku , koja se ukaza oivičena porušenim zidinama , iznad kojih se uzdizalo nekoliko zelenih urmi .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[24.489444444,58.876944444]},"properties":{"qid":"Q2581165","label":"Moka","wikidata_url":"https://www.wikidata.org/wiki/Q2581165","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["village"],"ner_label":"LOC","mention_count":1,"first_order":590,"first_mention":"Moka","first_sentence":"Paspartu je očarano posmatrao taj slavni grad i čak je našao da Moka sa kružnim zidinama i razrušenom tvrđavom koja izgledaše kao drška liči na ogromnu šolju .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Moka","sentence":"Paspartu je očarano posmatrao taj slavni grad i čak je našao da Moka sa kružnim zidinama i razrušenom tvrđavom koja izgledaše kao drška liči na ogromnu šolju .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[74.07323,15.21245]},"properties":{"qid":"Q256847","label":"Salcete taluk","wikidata_url":"https://www.wikidata.org/wiki/Q256847","annotation_types":[{"type":"LOC","count":3}],"wikidata_types":["Taluk of Goa"],"ner_label":"LOC","mention_count":3,"first_order":622,"first_mention":"Salcet","first_sentence":"Brod prodre u tu luku koju zatvaraju ostrva Salcet , Kolaba , Elefanta , Bačer , i u četiri i po časa pristade u pristaništu Bombaja .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Salcet","sentence":"Brod prodre u tu luku koju zatvaraju ostrva Salcet , Kolaba , Elefanta , Bačer , i u četiri i po časa pristade u pristaništu Bombaja .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Salcet","sentence":"Nije pogledao ni remek - dela u Elefanti , ni njihove tajanstvene grobnice skrivene na jugoistoku od luke , ni pećine Kaneri na ostrvu Salcet , te divne ostatke budističke arhitekture .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Salcet","sentence":"Jedan čas po odlasku iz Bombaja , voz je preko vijadukta prešao ostrvo Salcet i pojurio ka kopnu .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[72.933888888,18.9625]},"properties":{"qid":"Q175304","label":"Elephanta Island","wikidata_url":"https://www.wikidata.org/wiki/Q175304","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["island"],"ner_label":"LOC","mention_count":1,"first_order":623,"first_mention":"Elefanta","first_sentence":"Brod prodre u tu luku koju zatvaraju ostrva Salcet , Kolaba , Elefanta , Bačer , i u četiri i po časa pristade u pristaništu Bombaja .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Elefanta","sentence":"Brod prodre u tu luku koju zatvaraju ostrva Salcet , Kolaba , Elefanta , Bačer , i u četiri i po časa pristade u pristaništu Bombaja .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[72.9,18.96]},"properties":{"qid":"Q5002452","label":"Butcher Island","wikidata_url":"https://www.wikidata.org/wiki/Q5002452","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["island"],"ner_label":"LOC","mention_count":1,"first_order":624,"first_mention":"Bačer","first_sentence":"Brod prodre u tu luku koju zatvaraju ostrva Salcet , Kolaba , Elefanta , Bačer , i u četiri i po časa pristade u pristaništu Bombaja .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Bačer","sentence":"Brod prodre u tu luku koju zatvaraju ostrva Salcet , Kolaba , Elefanta , Bačer , i u četiri i po časa pristade u pristaništu Bombaja .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[80.275,13.0825]},"properties":{"qid":"Q1352","label":"Chennai","wikidata_url":"https://www.wikidata.org/wiki/Q1352","annotation_types":[{"type":"LOC","count":2}],"wikidata_types":["upravna jedinica","business cluster","provincial capital","largest city"],"ner_label":"LOC","mention_count":2,"first_order":637,"first_mention":"Madrasu","first_sentence":"Ona ima glavnog guvernera u Kalkuti , guvernera u Madrasu , u Bombaju i u Bengalu i jednog zamenika guvernera u Agri .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Madrasu","sentence":"Ona ima glavnog guvernera u Kalkuti , guvernera u Madrasu , u Bombaju i u Bengalu i jednog zamenika guvernera u Agri .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Madras","sentence":"Od 1756 . godine - kad je osnovana prva engleska naseobina na mestu gde je danas grad Madras - Pa sve do one godine kada je buknuo ustanak Sipajaca , čuvena Indijska kompanija bila je svemoćna .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[88.7311,23.9888]},"properties":{"qid":"Q80338","label":"Bengal","wikidata_url":"https://www.wikidata.org/wiki/Q80338","annotation_types":[{"type":"LOC","count":2}],"wikidata_types":["region","istorijska oblast"],"ner_label":"LOC","mention_count":2,"first_order":639,"first_mention":"Bengalu","first_sentence":"Ona ima glavnog guvernera u Kalkuti , guvernera u Madrasu , u Bombaju i u Bengalu i jednog zamenika guvernera u Agri .","source_files":["I_Vern-all-56501-57000-ner.tsv","I_Vern-all-57001-57500-ner.tsv"],"sample_mentions":[{"text":"Bengalu","sentence":"Ona ima glavnog guvernera u Kalkuti , guvernera u Madrasu , u Bombaju i u Bengalu i jednog zamenika guvernera u Agri .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Bengala","sentence":"Zatim nastupi noć , i usred urlikanja tigrova , medveda , vukova , koji su bežali ispred lokomotive , voz projuri svom brzinom , i više se ništa nije videlo od čuda Bengala , Golkonda - ni Gur u ruševinama , ni Muršedabag , negdašnja prestonica , ni Burdven , ni Huglu , ni Čandernagor , ta francuska naseobina u Indiji povrh koje bi Paspartu rado ugledao lepršanje zastave svoje otadžbine !","source_file":"I_Vern-all-57001-57500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[43.054444444,39.7225]},"properties":{"qid":"Q199575","label":"Agri","wikidata_url":"https://www.wikidata.org/wiki/Q199575","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["city","municipality","veliki grad"],"ner_label":"LOC","mention_count":1,"first_order":640,"first_mention":"Agri","first_sentence":"Ona ima glavnog guvernera u Kalkuti , guvernera u Madrasu , u Bombaju i u Bengalu i jednog zamenika guvernera u Agri .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Agri","sentence":"Ona ima glavnog guvernera u Kalkuti , guvernera u Madrasu , u Bombaju i u Bengalu i jednog zamenika guvernera u Agri .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[90.9,22.0]},"properties":{"qid":"Q5089","label":"Ganges","wikidata_url":"https://www.wikidata.org/wiki/Q5089","annotation_types":[{"type":"LOC","count":9}],"wikidata_types":["rekа","sacred river"],"ner_label":"LOC","mention_count":9,"first_order":648,"first_mention":"Gangu","first_sentence":"Sada pak , po Indu i Gangu plove velikom brzinom brodovi , a železnica koja preseca Indiju celom njenom širinom , granajući se uz put , vezuje Bombaj sa Kalkutom za svega tri dana vožnje .","source_files":["I_Vern-all-56501-57000-ner.tsv","I_Vern-all-57001-57500-ner.tsv"],"sample_mentions":[{"text":"Gangu","sentence":"Sada pak , po Indu i Gangu plove velikom brzinom brodovi , a železnica koja preseca Indiju celom njenom širinom , granajući se uz put , vezuje Bombaj sa Kalkutom za svega tri dana vožnje .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Ganga","sentence":"Uglavnom , pruga Velike indijske poluostrvske železnice ide ovako : polazeći sa Bombajskog ostrva ide preko Salceta , dolazi na kopno kod Teme , prelazi planinski lanac Zapadnog Gatesa , prolazi severoistočno do Burhampura , seče skoro nezavisnu teritoriju Bundelkunda , penje se do Alahabada , savija na istok , dopire kod Benaresa do Ganga , udaljuje se malo od njega i ponovo silazeći na jugoistok , preko Burdivana i francuskog grada Čandernagora , završava se u Kalkuti .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Ganga","sentence":"Oko podne vodič obiđe selo Kelendžer na Kani , pritoci Ganga .","source_file":"I_Vern-all-57001-57500-ner.tsv"},{"text":"Ganga","sentence":"GLAVA XIV u kojoj Fileas Fog prolazi celom divnom dolinom Ganga , a ni na um mu ne pada da je pogleda .","source_file":"I_Vern-all-57001-57500-ner.tsv"},{"text":"Ganga","sentence":"Alahabad je božanski grad , najviše poštovan u Indiji , jer je sagrađen na ušću dveju svetih reka , Ganga i Džamne , čije vode privlače hodočasnike sa celog poluostrva .","source_file":"I_Vern-all-57001-57500-ner.tsv"},{"text":"Gang","sentence":"Uostalom , poznato je da prema legendama Ramajana Gang izvire u nebu , odakle , zahvaljujući Brami , silazi na zemlju . Dok je kupovao , Paspartu je razgledao grad koji je nekad branila veličanstvena tvrđava , sada državna tamnica .","source_file":"I_Vern-all-57001-57500-ner.tsv"},{"text":"Ganga","sentence":"Od Benaresa pruga je išla jednim delom dolinom Ganga .","source_file":"I_Vern-all-57001-57500-ner.tsv"},{"text":"Ganga","sentence":"Ti vernici su ogorčeni neprijatelji budizma a vatreni sledbenici bramanske vere , koja je ovaploćena u ove tri ličnosti : Višnuu , sunčanom božanstvu , Šivi , božanskom oličenju prirodnih sila , i Brami , vrhovnom gospodaru sveštenika i zakonodavaca . Ali kakvim očima su Brama , Šiva i Višnu posmatrali tu Indiju , sada \" poengleženu \" , kad kakav brod penušeći se zamuti osvećene vode Ganga , plašeći galebove koji su leteli po njegovoj površini , kornjače koje su kiptele na obalama i vernike rasute duž njegovih obala !","source_file":"I_Vern-all-57001-57500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[81.85,25.45]},"properties":{"qid":"Q162442","label":"Prayagraj","wikidata_url":"https://www.wikidata.org/wiki/Q162442","annotation_types":[{"type":"LOC","count":17}],"wikidata_types":["city"],"ner_label":"LOC","mention_count":17,"first_order":652,"first_mention":"Alahabada","first_sentence":"Daljina u pravoj liniji iznosi hiljadu do hiljadu sto milja , i vozu koji bi išao srednjom brzinom ne bi trebalo tri dana za taj put , ali je ova daljina povećana najmanje za jednu trećinu okukom koju pravi pruga idući sve do Alahabada na severu poluostrva .","source_files":["I_Vern-all-56501-57000-ner.tsv","I_Vern-all-57001-57500-ner.tsv"],"sample_mentions":[{"text":"Alahabada","sentence":"Daljina u pravoj liniji iznosi hiljadu do hiljadu sto milja , i vozu koji bi išao srednjom brzinom ne bi trebalo tri dana za taj put , ali je ova daljina povećana najmanje za jednu trećinu okukom koju pravi pruga idući sve do Alahabada na severu poluostrva .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Alahabada","sentence":"Uglavnom , pruga Velike indijske poluostrvske železnice ide ovako : polazeći sa Bombajskog ostrva ide preko Salceta , dolazi na kopno kod Teme , prelazi planinski lanac Zapadnog Gatesa , prolazi severoistočno do Burhampura , seče skoro nezavisnu teritoriju Bundelkunda , penje se do Alahabada , savija na istok , dopire kod Benaresa do Ganga , udaljuje se malo od njega i ponovo silazeći na jugoistok , preko Burdivana i francuskog grada Čandernagora , završava se u Kalkuti .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Alahabada","sentence":"Ima da se postavi još jedan komad od oko pedeset milja između ovog mesta i Alahabada , odakle se pruga nastavlja .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Alhabada","sentence":"Nesumnjivo , odgovori vozovođa ali putnici dobro znaju da se moraju prebaciti od Kolbija do Alhabada .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Alahabada","sentence":"Ser Fransise , jednostavno reče gospodin Fog hajdemo , ako hoćete , da pronađemo način da stignemo do Alahabada .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Alahabada","sentence":"Pod pretpostavkom da slonu bude potrebno petnaest časova da stigne do Alahabada doneo bi šest stotina livara svom gazdi .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Alahabad","sentence":"Zatim gospodin Fog ponudi ser Fransisu Kromertiju da ga prebaci do stanice Alahabad .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Alahabad","sentence":"Šta će gospodin Fog raditi sa slonom kad stigne u Alahabad ?","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[79.921427,24.854422]},"properties":{"qid":"Q851955","label":"Bundelkhand","wikidata_url":"https://www.wikidata.org/wiki/Q851955","annotation_types":[{"type":"LOC","count":9}],"wikidata_types":["region"],"ner_label":"LOC","mention_count":9,"first_order":653,"first_mention":"Bundelkunda","first_sentence":"Uglavnom , pruga Velike indijske poluostrvske železnice ide ovako : polazeći sa Bombajskog ostrva ide preko Salceta , dolazi na kopno kod Teme , prelazi planinski lanac Zapadnog Gatesa , prolazi severoistočno do Burhampura , seče skoro nezavisnu teritoriju Bundelkunda , penje se do Alahabada , savija na istok , dopire kod Benaresa do Ganga , udaljuje se malo od njega i ponovo silazeći na jugoistok , preko Burdivana i francuskog grada Čandernagora , završava se u Kalkuti .","source_files":["I_Vern-all-56501-57000-ner.tsv","I_Vern-all-57001-57500-ner.tsv"],"sample_mentions":[{"text":"Bundelkunda","sentence":"Uglavnom , pruga Velike indijske poluostrvske železnice ide ovako : polazeći sa Bombajskog ostrva ide preko Salceta , dolazi na kopno kod Teme , prelazi planinski lanac Zapadnog Gatesa , prolazi severoistočno do Burhampura , seče skoro nezavisnu teritoriju Bundelkunda , penje se do Alahabada , savija na istok , dopire kod Benaresa do Ganga , udaljuje se malo od njega i ponovo silazeći na jugoistok , preko Burdivana i francuskog grada Čandernagora , završava se u Kalkuti .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Bundelkunda","sentence":"Uveče uđoše u planinske klance Sutapura koji dele Kandiš od Bundelkunda .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Bundelkunda","sentence":"U ovom celom gornjem kraju Bundelkunda , koji su stranci slabo posećivali , stanovao je fanatični narod okoreo u vršenju najgroznijih verskih obreda .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Bundelkunda","sentence":"To je knez , njen muž , odgovori vodič jedan nezavisni radža od Bundelkunda .","source_file":"I_Vern-all-57001-57500-ner.tsv"},{"text":"Bundelkundu","sentence":"U najvećem delu Indije odgovori ser Fransis Kromerti ove se žrtve više ne prinose , ali u ovim divljim predelima , a osobito u Bundelkundu , nemamo nikakvog uticaja .","source_file":"I_Vern-all-57001-57500-ner.tsv"},{"text":"Bundelkundu","sentence":"Ta to znaju svi u Bundelkundu odgovori vodič .","source_file":"I_Vern-all-57001-57500-ner.tsv"},{"text":"Bundelkunda","sentence":"Zvala se Auda . Kad je ostala siroče , udala se protiv svoje volje za starog radžu od Bundelkunda .","source_file":"I_Vern-all-57001-57500-ner.tsv"},{"text":"Bundelkunda","sentence":"Ali , bez sve te pesničke opširnosti , dovoljno je reći da je gospođa Auda , udovica radže od Bundelkunda , bila dražesna žena u potpuno evropskom smislu reči .","source_file":"I_Vern-all-57001-57500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[72.795,18.95]},"properties":{"qid":"Q6373912","label":"Malabar Hill","wikidata_url":"https://www.wikidata.org/wiki/Q6373912","annotation_types":[{"type":"LOC","count":3}],"wikidata_types":["susedstvo"],"ner_label":"LOC","mention_count":3,"first_order":666,"first_mention":"Malebar-Hil","first_sentence":"Tako od znamenitosti Bombaja nije hteo ništa da vidi , ni gradsku kuću , ni veličanstvenu biblioteku , ni utvrđenja , ni brodogradilišta , ni pamučno tržište , ni trgovine , ni džamije , ni sinagoge , ni jermenske crkve , ni krasnu pagodu Malebar - Hil , ukrašenu dvema višeugaonim kulama .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Malebar-Hil","sentence":"Tako od znamenitosti Bombaja nije hteo ništa da vidi , ni gradsku kuću , ni veličanstvenu biblioteku , ni utvrđenja , ni brodogradilišta , ni pamučno tržište , ni trgovine , ni džamije , ni sinagoge , ni jermenske crkve , ni krasnu pagodu Malebar - Hil , ukrašenu dvema višeugaonim kulama .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Malebar-Hila","sentence":"Pošto je video karneval Parsa , Paspartu se uputi ka , železničkoj stanici , kad , prolazeći pored krasne pagode Malebar - Hila , zaželi da je i iznutra vidi . Nije znao dve stvari : prvo , da je ulaz u poneke indijske pagode zabranjen hrišćanima i , osim toga , da ni sami vernici ne mogu ući u njih pre nego što ostave svoju obuću pred vratima .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Malebar-Hila","sentence":"Paspartu uđe unutra ne misleći ništa rđavo i kao običan turist poče se diviti zasenjujućem sjaju bramanskih ukrasa u unutrašnjosti Malebar - Hila , kad iznenada bi oboren na svete ploče .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[73.15,19.25]},"properties":{"qid":"Q366754","label":"Kalyan","wikidata_url":"https://www.wikidata.org/wiki/Q366754","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["town in India"],"ner_label":"LOC","mention_count":1,"first_order":765,"first_mention":"Kelijan","first_sentence":"Na stanici Kelijan ostavio je s desne strane sporednu , železničku prugu , koja preko Kendalaha i Punaha silazi ka jugoistoku Indije te stiže do stanice Pauel .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Kelijan","sentence":"Na stanici Kelijan ostavio je s desne strane sporednu , železničku prugu , koja preko Kendalaha i Punaha silazi ka jugoistoku Indije te stiže do stanice Pauel .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[73.372,18.758]},"properties":{"qid":"Q3595887","label":"Khandala","wikidata_url":"https://www.wikidata.org/wiki/Q3595887","annotation_types":[{"type":"LOC","count":2}],"wikidata_types":["hill station"],"ner_label":"LOC","mention_count":2,"first_order":766,"first_mention":"Kendalaha","first_sentence":"Na stanici Kelijan ostavio je s desne strane sporednu , železničku prugu , koja preko Kendalaha i Punaha silazi ka jugoistoku Indije te stiže do stanice Pauel .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Kendalaha","sentence":"Na stanici Kelijan ostavio je s desne strane sporednu , železničku prugu , koja preko Kendalaha i Punaha silazi ka jugoistoku Indije te stiže do stanice Pauel .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Kendalah","sentence":"Zato što se železnička pruga prekidala u podnožju ove planine , koja se morala prelaziti u nosiljci ili na leđima ponija do stanice Kendalah na drugoj strani .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[73.855277777,18.521111111]},"properties":{"qid":"Q1538","label":"Pune","wikidata_url":"https://www.wikidata.org/wiki/Q1538","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["city"],"ner_label":"LOC","mention_count":1,"first_order":767,"first_mention":"Punaha","first_sentence":"Na stanici Kelijan ostavio je s desne strane sporednu , železničku prugu , koja preko Kendalaha i Punaha silazi ka jugoistoku Indije te stiže do stanice Pauel .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Punaha","sentence":"Na stanici Kelijan ostavio je s desne strane sporednu , železničku prugu , koja preko Kendalaha i Punaha silazi ka jugoistoku Indije te stiže do stanice Pauel .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[95.646229,27.35353]},"properties":{"qid":"Q63361171","label":"Powai railway station","wikidata_url":"https://www.wikidata.org/wiki/Q63361171","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["železnička stanica"],"ner_label":"LOC","mention_count":1,"first_order":769,"first_mention":"Pauel","first_sentence":"Na stanici Kelijan ostavio je s desne strane sporednu , železničku prugu , koja preko Kendalaha i Punaha silazi ka jugoistoku Indije te stiže do stanice Pauel .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Pauel","sentence":"Na stanici Kelijan ostavio je s desne strane sporednu , železničku prugu , koja preko Kendalaha i Punaha silazi ka jugoistoku Indije te stiže do stanice Pauel .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[77.061111111,10.169722222]},"properties":{"qid":"Q4527","label":"Western Ghats","wikidata_url":"https://www.wikidata.org/wiki/Q4527","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["planinski venac","Zaštita prirode"],"ner_label":"LOC","mention_count":1,"first_order":770,"first_mention":"Zapadnih Gatesa","first_sentence":"Na tom mestu ulazi u vrlo razgranate planine Zapadnih Gatesa , lanac sa podnožjem od bazalta i trapa , čiji su najviši vrhovi pokriveni gustom šumom .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Zapadnih Gatesa","sentence":"Na tom mestu ulazi u vrlo razgranate planine Zapadnih Gatesa , lanac sa podnožjem od bazalta i trapa , čiji su najviši vrhovi pokriveni gustom šumom .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[73.783333333,20.0]},"properties":{"qid":"Q200235","label":"Našik","wikidata_url":"https://www.wikidata.org/wiki/Q200235","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["veliki grad"],"ner_label":"LOC","mention_count":1,"first_order":793,"first_mention":"Nesik","first_sentence":"U noći voz pređe preko Gatesa , prođe Nesik i sutradan , 21 . oktobra , jurio je preko skoro ravnog predela Kandiša .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Nesik","sentence":"U noći voz pređe preko Gatesa , prođe Nesik i sutradan , 21 . oktobra , jurio je preko skoro ravnog predela Kandiša .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[101.231087801,0.949392369]},"properties":{"qid":"Q6542546","label":"Kandis","wikidata_url":"https://www.wikidata.org/wiki/Q6542546","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["okrug Indonezije"],"ner_label":"LOC","mention_count":1,"first_order":794,"first_mention":"Kandiša","first_sentence":"U noći voz pređe preko Gatesa , prođe Nesik i sutradan , 21 . oktobra , jurio je preko skoro ravnog predela Kandiša .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Kandiša","sentence":"U noći voz pređe preko Gatesa , prođe Nesik i sutradan , 21 . oktobra , jurio je preko skoro ravnog predela Kandiša .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[73.5275,19.93]},"properties":{"qid":"Q191314","label":"Godavari River","wikidata_url":"https://www.wikidata.org/wiki/Q191314","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["rekа"],"ner_label":"LOC","mention_count":1,"first_order":795,"first_mention":"Godovere","first_sentence":"Mnogobrojni mali potoci , većinom pritoke reke Godovere , plavili su ovaj rodni kraj . Kad se Paspartu probudio i oko sebe pogledao , nije mogao da veruje da prolazi kroz zemlju Indusa u vozu Velike poluostrvske železnice .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Godovere","sentence":"Mnogobrojni mali potoci , većinom pritoke reke Godovere , plavili su ovaj rodni kraj . Kad se Paspartu probudio i oko sebe pogledao , nije mogao da veruje da prolazi kroz zemlju Indusa u vozu Velike poluostrvske železnice .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[74.55,20.55]},"properties":{"qid":"Q580965","label":"Malegaon","wikidata_url":"https://www.wikidata.org/wiki/Q580965","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["city"],"ner_label":"LOC","mention_count":1,"first_order":799,"first_mention":"Meligama","first_sentence":"Tog jutra , iza stanice Meligama , putnici prođoše kroz nesrećni kraj tako često prskan krvlju vernika boginje Kali .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Meligama","sentence":"Tog jutra , iza stanice Meligama , putnici prođoše kroz nesrećni kraj tako često prskan krvlju vernika boginje Kali .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[-80.427222222,43.685]},"properties":{"qid":"Q5367201","label":"Elora","wikidata_url":"https://www.wikidata.org/wiki/Q5367201","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["village"],"ner_label":"LOC","mention_count":1,"first_order":803,"first_mention":"Elora","first_sentence":"Nedaleko odatle dizala se Elora i njene divne pagode , a malo dalje čuvena Oregabar , prestonica divljeg Oreng - Zejba , sada samo glavni grad jedne provincije otrgnute nizamskoj kraljevini .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Elora","sentence":"Nedaleko odatle dizala se Elora i njene divne pagode , a malo dalje čuvena Oregabar , prestonica divljeg Oreng - Zejba , sada samo glavni grad jedne provincije otrgnute nizamskoj kraljevini .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[75.32,19.88]},"properties":{"qid":"Q200713","label":"Aurangabad","wikidata_url":"https://www.wikidata.org/wiki/Q200713","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["city","veliki grad"],"ner_label":"LOC","mention_count":1,"first_order":804,"first_mention":"Oregabar","first_sentence":"Nedaleko odatle dizala se Elora i njene divne pagode , a malo dalje čuvena Oregabar , prestonica divljeg Oreng - Zejba , sada samo glavni grad jedne provincije otrgnute nizamskoj kraljevini .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Oregabar","sentence":"Nedaleko odatle dizala se Elora i njene divne pagode , a malo dalje čuvena Oregabar , prestonica divljeg Oreng - Zejba , sada samo glavni grad jedne provincije otrgnute nizamskoj kraljevini .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[76.226667,21.3]},"properties":{"qid":"Q593193","label":"Burhanpur","wikidata_url":"https://www.wikidata.org/wiki/Q593193","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["city","Municipal Corporation (India)"],"ner_label":"LOC","mention_count":1,"first_order":809,"first_mention":"Burhampur","first_sentence":"U dvanaest i po časova , voz se zaustavi na stanici Burhampur i Paspartu uspe tu za zlato da nabavi par papuča ukrašenih lažnim biserom , koje obu sa osećanjem očevidne sujete .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Burhampur","sentence":"U dvanaest i po časova , voz se zaustavi na stanici Burhampur i Paspartu uspe tu za zlato da nabavi par papuča ukrašenih lažnim biserom , koje obu sa osećanjem očevidne sujete .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[76.268065,21.378418]},"properties":{"qid":"Q24949848","label":"Asirgarh Road railway station","wikidata_url":"https://www.wikidata.org/wiki/Q24949848","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["železnička stanica","station located on surface"],"ner_label":"LOC","mention_count":1,"first_order":812,"first_mention":"Asurgur","first_sentence":"Putnici na brzinu uzeše ručak i zatim opet nastaviše put prema stanici Asurgur idući neko vreme uz obalu Tepte , male reke koja se uliva u Kembejski zaliv blizu Surata .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Asurgur","sentence":"Putnici na brzinu uzeše ručak i zatim opet nastaviše put prema stanici Asurgur idući neko vreme uz obalu Tepte , male reke koja se uliva u Kembejski zaliv blizu Surata .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[72.684166666,21.084444444]},"properties":{"qid":"Q707056","label":"Tapti River","wikidata_url":"https://www.wikidata.org/wiki/Q707056","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["rekа"],"ner_label":"LOC","mention_count":1,"first_order":813,"first_mention":"Tepte","first_sentence":"Putnici na brzinu uzeše ručak i zatim opet nastaviše put prema stanici Asurgur idući neko vreme uz obalu Tepte , male reke koja se uliva u Kembejski zaliv blizu Surata .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Tepte","sentence":"Putnici na brzinu uzeše ručak i zatim opet nastaviše put prema stanici Asurgur idući neko vreme uz obalu Tepte , male reke koja se uliva u Kembejski zaliv blizu Surata .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[72.29749,20.73052]},"properties":{"qid":"Q654010","label":"Gulf of Khambhat","wikidata_url":"https://www.wikidata.org/wiki/Q654010","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["zaliv"],"ner_label":"LOC","mention_count":1,"first_order":814,"first_mention":"Kembejski zaliv","first_sentence":"Putnici na brzinu uzeše ručak i zatim opet nastaviše put prema stanici Asurgur idući neko vreme uz obalu Tepte , male reke koja se uliva u Kembejski zaliv blizu Surata .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Kembejski zaliv","sentence":"Putnici na brzinu uzeše ručak i zatim opet nastaviše put prema stanici Asurgur idući neko vreme uz obalu Tepte , male reke koja se uliva u Kembejski zaliv blizu Surata .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[72.84,21.205]},"properties":{"qid":"Q4629","label":"Surat","wikidata_url":"https://www.wikidata.org/wiki/Q4629","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["city","veliki grad"],"ner_label":"LOC","mention_count":1,"first_order":815,"first_mention":"Surata","first_sentence":"Putnici na brzinu uzeše ručak i zatim opet nastaviše put prema stanici Asurgur idući neko vreme uz obalu Tepte , male reke koja se uliva u Kembejski zaliv blizu Surata .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Surata","sentence":"Putnici na brzinu uzeše ručak i zatim opet nastaviše put prema stanici Asurgur idući neko vreme uz obalu Tepte , male reke koja se uliva u Kembejski zaliv blizu Surata .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[78.0,22.0]},"properties":{"qid":"Q1145416","label":"Satpura Range","wikidata_url":"https://www.wikidata.org/wiki/Q1145416","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["planinski venac"],"ner_label":"LOC","mention_count":1,"first_order":825,"first_mention":"Sutapura","first_sentence":"Uveče uđoše u planinske klance Sutapura koji dele Kandiš od Bundelkunda .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Sutapura","sentence":"Uveče uđoše u planinske klance Sutapura koji dele Kandiš od Bundelkunda .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[75.0,21.0]},"properties":{"qid":"Q598803","label":"Khandesh","wikidata_url":"https://www.wikidata.org/wiki/Q598803","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["istorijska oblast"],"ner_label":"LOC","mention_count":1,"first_order":826,"first_mention":"Kandiš","first_sentence":"Uveče uđoše u planinske klance Sutapura koji dele Kandiš od Bundelkunda .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Kandiš","sentence":"Uveče uđoše u planinske klance Sutapura koji dele Kandiš od Bundelkunda .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[82.004802139,24.617504804]},"properties":{"qid":"Q271435","label":"Vindhya Range","wikidata_url":"https://www.wikidata.org/wiki/Q271435","annotation_types":[{"type":"LOC","count":2}],"wikidata_types":["planinski venac"],"ner_label":"LOC","mention_count":2,"first_order":933,"first_mention":"Vindijskih planina","first_sentence":"Taj deo pruge , kome su mnogo smetali raštrkani ogranci Vindijskih planina , nije išao najkraćim putem koji je Fileasu Fogu bio najpovoljniji .","source_files":["I_Vern-all-56501-57000-ner.tsv"],"sample_mentions":[{"text":"Vindijskih planina","sentence":"Taj deo pruge , kome su mnogo smetali raštrkani ogranci Vindijskih planina , nije išao najkraćim putem koji je Fileasu Fogu bio najpovoljniji .","source_file":"I_Vern-all-56501-57000-ner.tsv"},{"text":"Vindijskoj gori","sentence":"Englezi nisu mogli učvrstiti svoju vlast u toj zemlji podvrgnutoj uticaju radža , koje je bilo teško goniti u njihovim nepristupačnim skloništima na Vindijskoj gori .","source_file":"I_Vern-all-56501-57000-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[80.28812,13.08778]},"properties":{"qid":"Q502531","label":"Madras High Court","wikidata_url":"https://www.wikidata.org/wiki/Q502531","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["sud","apelacioni sud"],"ner_label":"LOC","mention_count":1,"first_order":1175,"first_mention":"Madrasu","first_sentence":"Takvih zanesenjaka ima na celom poluostrvu , i sigurno bi , uprkos engleskoj policiji , ponovo oteli svoju žrtvu bilo u Madrasu , bilo u Bombaju ili u Kalkuti .","source_files":["I_Vern-all-57001-57500-ner.tsv"],"sample_mentions":[{"text":"Madrasu","sentence":"Takvih zanesenjaka ima na celom poluostrvu , i sigurno bi , uprkos engleskoj policiji , ponovo oteli svoju žrtvu bilo u Madrasu , bilo u Bombaju ili u Kalkuti .","source_file":"I_Vern-all-57001-57500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[78.455,31.0225]},"properties":{"qid":"Q132726","label":"Jamuna","wikidata_url":"https://www.wikidata.org/wiki/Q132726","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["rekа"],"ner_label":"LOC","mention_count":1,"first_order":1193,"first_mention":"Džamne","first_sentence":"Alahabad je božanski grad , najviše poštovan u Indiji , jer je sagrađen na ušću dveju svetih reka , Ganga i Džamne , čije vode privlače hodočasnike sa celog poluostrva .","source_files":["I_Vern-all-57001-57500-ner.tsv"],"sample_mentions":[{"text":"Džamne","sentence":"Alahabad je božanski grad , najviše poštovan u Indiji , jer je sagrađen na ušću dveju svetih reka , Ganga i Džamne , čije vode privlače hodočasnike sa celog poluostrva .","source_file":"I_Vern-all-57001-57500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[84.0,29.0]},"properties":{"qid":"Q5451","label":"Himalayas","wikidata_url":"https://www.wikidata.org/wiki/Q5451","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["planinski venac"],"ner_label":"LOC","mention_count":1,"first_order":1206,"first_mention":"Himalaja","first_sentence":"Njene obrve , kao od abonosa , imaju oblik i moć kao luk Kame , boga ljubavi , a ispod njenih dugih , svilenih trepavica , u crnoj zenici njenih velikih , sjajnih očiju , plivaju , kao u svetim jezerima Himalaja , najčistiji odblesci nebeske svetlosti .","source_files":["I_Vern-all-57001-57500-ner.tsv"],"sample_mentions":[{"text":"Himalaja","sentence":"Njene obrve , kao od abonosa , imaju oblik i moć kao luk Kame , boga ljubavi , a ispod njenih dugih , svilenih trepavica , u crnoj zenici njenih velikih , sjajnih očiju , plivaju , kao u svetim jezerima Himalaja , najčistiji odblesci nebeske svetlosti .","source_file":"I_Vern-all-57001-57500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[23.728055555,37.984166666]},"properties":{"qid":"Q1524","label":"Athens","wikidata_url":"https://www.wikidata.org/wiki/Q1524","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["velegrad","veliki grad","free city","largest city"],"ner_label":"LOC","mention_count":1,"first_order":1252,"first_mention":"Atina","first_sentence":"Bramanske legende tvrde da taj grad zauzima područje pređašnjeg Kazija , koji je nekad visio u prostoru između zenita i nadira , kao grob Muhamedov . Ali u ovo realističko doba , Benares , Atina Indije , po kazivanju istočnjaka , ležao je sasvim prozaično na zemlji , te je Paspartu mogao za trenutak videti njegove kuće od cigala , pletene kolibe , koje su mu davale potpuno tužan izgled bez ikakve lokalne boje .","source_files":["I_Vern-all-57001-57500-ner.tsv"],"sample_mentions":[{"text":"Atina","sentence":"Bramanske legende tvrde da taj grad zauzima područje pređašnjeg Kazija , koji je nekad visio u prostoru između zenita i nadira , kao grob Muhamedov . Ali u ovo realističko doba , Benares , Atina Indije , po kazivanju istočnjaka , ležao je sasvim prozaično na zemlji , te je Paspartu mogao za trenutak videti njegove kuće od cigala , pletene kolibe , koje su mu davale potpuno tužan izgled bez ikakve lokalne boje .","source_file":"I_Vern-all-57001-57500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[88.4687,23.2313]},"properties":{"qid":"Q75152699","label":"Beharia","wikidata_url":"https://www.wikidata.org/wiki/Q75152699","annotation_types":[{"type":"LOC","count":2}],"wikidata_types":["census town of India"],"ner_label":"LOC","mention_count":2,"first_order":1267,"first_mention":"Behara","first_sentence":"Kroz prozore vagona mogao se po lepom vremenu videti šaroliki predeo Behara , bregovi pokriveni zelenilom , ječmena , kukuruzna i pšenična polja , rečice i bare pune zelenkastih aligatora , dobro uređena sela , još zelene šume .","source_files":["I_Vern-all-57001-57500-ner.tsv"],"sample_mentions":[{"text":"Behara","sentence":"Kroz prozore vagona mogao se po lepom vremenu videti šaroliki predeo Behara , bregovi pokriveni zelenilom , ječmena , kukuruzna i pšenična polja , rečice i bare pune zelenkastih aligatora , dobro uređena sela , još zelene šume .","source_file":"I_Vern-all-57001-57500-ner.tsv"},{"text":"Behara","sentence":"Putnici jedva videše Šunar , negdašnju tvrđavu radže od Behara , na dvadeset milja jugoistočno od Benaresa , Gazepur i njegove važne fabrike ružine vodice , grob lorda Kornvalisa , koji leži na levoj obali Ganga , utvrđenje Buksar , Patnu , veliko industrijsko i trgovačko središte u kome je glavno tržište opijuma u Indiji , Mangir , grad više nego evropski , engleski kao Mančester ili Birmingam , čuven po svojim livnicama gvožđa , fabrikama raznih sečiva i hladnog oružja , čiji visoki dimnjaci prljaju crnim dimom Bramino nebo - pravi pištolj u zemlji snova !","source_file":"I_Vern-all-57001-57500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[88.24662,22.41185]},"properties":{"qid":"Q60623371","label":"Gazipur","wikidata_url":"https://www.wikidata.org/wiki/Q60623371","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["village in India"],"ner_label":"LOC","mention_count":1,"first_order":1286,"first_mention":"Gazepur","first_sentence":"Putnici jedva videše Šunar , negdašnju tvrđavu radže od Behara , na dvadeset milja jugoistočno od Benaresa , Gazepur i njegove važne fabrike ružine vodice , grob lorda Kornvalisa , koji leži na levoj obali Ganga , utvrđenje Buksar , Patnu , veliko industrijsko i trgovačko središte u kome je glavno tržište opijuma u Indiji , Mangir , grad više nego evropski , engleski kao Mančester ili Birmingam , čuven po svojim livnicama gvožđa , fabrikama raznih sečiva i hladnog oružja , čiji visoki dimnjaci prljaju crnim dimom Bramino nebo - pravi pištolj u zemlji snova !","source_files":["I_Vern-all-57001-57500-ner.tsv"],"sample_mentions":[{"text":"Gazepur","sentence":"Putnici jedva videše Šunar , negdašnju tvrđavu radže od Behara , na dvadeset milja jugoistočno od Benaresa , Gazepur i njegove važne fabrike ružine vodice , grob lorda Kornvalisa , koji leži na levoj obali Ganga , utvrđenje Buksar , Patnu , veliko industrijsko i trgovačko središte u kome je glavno tržište opijuma u Indiji , Mangir , grad više nego evropski , engleski kao Mančester ili Birmingam , čuven po svojim livnicama gvožđa , fabrikama raznih sečiva i hladnog oružja , čiji visoki dimnjaci prljaju crnim dimom Bramino nebo - pravi pištolj u zemlji snova !","source_file":"I_Vern-all-57001-57500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[85.141388888,25.61]},"properties":{"qid":"Q80484","label":"Patna","wikidata_url":"https://www.wikidata.org/wiki/Q80484","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["city","veliki grad","provincial capital","largest city"],"ner_label":"LOC","mention_count":1,"first_order":1289,"first_mention":"Patnu","first_sentence":"Putnici jedva videše Šunar , negdašnju tvrđavu radže od Behara , na dvadeset milja jugoistočno od Benaresa , Gazepur i njegove važne fabrike ružine vodice , grob lorda Kornvalisa , koji leži na levoj obali Ganga , utvrđenje Buksar , Patnu , veliko industrijsko i trgovačko središte u kome je glavno tržište opijuma u Indiji , Mangir , grad više nego evropski , engleski kao Mančester ili Birmingam , čuven po svojim livnicama gvožđa , fabrikama raznih sečiva i hladnog oružja , čiji visoki dimnjaci prljaju crnim dimom Bramino nebo - pravi pištolj u zemlji snova !","source_files":["I_Vern-all-57001-57500-ner.tsv"],"sample_mentions":[{"text":"Patnu","sentence":"Putnici jedva videše Šunar , negdašnju tvrđavu radže od Behara , na dvadeset milja jugoistočno od Benaresa , Gazepur i njegove važne fabrike ružine vodice , grob lorda Kornvalisa , koji leži na levoj obali Ganga , utvrđenje Buksar , Patnu , veliko industrijsko i trgovačko središte u kome je glavno tržište opijuma u Indiji , Mangir , grad više nego evropski , engleski kao Mančester ili Birmingam , čuven po svojim livnicama gvožđa , fabrikama raznih sečiva i hladnog oružja , čiji visoki dimnjaci prljaju crnim dimom Bramino nebo - pravi pištolj u zemlji snova !","source_file":"I_Vern-all-57001-57500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[-2.233333333,53.466666666]},"properties":{"qid":"Q18125","label":"Manchester","wikidata_url":"https://www.wikidata.org/wiki/Q18125","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["city","veliki grad","unparished area"],"ner_label":"LOC","mention_count":1,"first_order":1291,"first_mention":"Mančester","first_sentence":"Putnici jedva videše Šunar , negdašnju tvrđavu radže od Behara , na dvadeset milja jugoistočno od Benaresa , Gazepur i njegove važne fabrike ružine vodice , grob lorda Kornvalisa , koji leži na levoj obali Ganga , utvrđenje Buksar , Patnu , veliko industrijsko i trgovačko središte u kome je glavno tržište opijuma u Indiji , Mangir , grad više nego evropski , engleski kao Mančester ili Birmingam , čuven po svojim livnicama gvožđa , fabrikama raznih sečiva i hladnog oružja , čiji visoki dimnjaci prljaju crnim dimom Bramino nebo - pravi pištolj u zemlji snova !","source_files":["I_Vern-all-57001-57500-ner.tsv"],"sample_mentions":[{"text":"Mančester","sentence":"Putnici jedva videše Šunar , negdašnju tvrđavu radže od Behara , na dvadeset milja jugoistočno od Benaresa , Gazepur i njegove važne fabrike ružine vodice , grob lorda Kornvalisa , koji leži na levoj obali Ganga , utvrđenje Buksar , Patnu , veliko industrijsko i trgovačko središte u kome je glavno tržište opijuma u Indiji , Mangir , grad više nego evropski , engleski kao Mančester ili Birmingam , čuven po svojim livnicama gvožđa , fabrikama raznih sečiva i hladnog oružja , čiji visoki dimnjaci prljaju crnim dimom Bramino nebo - pravi pištolj u zemlji snova !","source_file":"I_Vern-all-57001-57500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[-1.9025,52.48]},"properties":{"qid":"Q2256","label":"Birmingham","wikidata_url":"https://www.wikidata.org/wiki/Q2256","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["city","velegrad","univerzitetski grad","unparished area","city of United Kingdom"],"ner_label":"LOC","mention_count":1,"first_order":1292,"first_mention":"Birmingam","first_sentence":"Putnici jedva videše Šunar , negdašnju tvrđavu radže od Behara , na dvadeset milja jugoistočno od Benaresa , Gazepur i njegove važne fabrike ružine vodice , grob lorda Kornvalisa , koji leži na levoj obali Ganga , utvrđenje Buksar , Patnu , veliko industrijsko i trgovačko središte u kome je glavno tržište opijuma u Indiji , Mangir , grad više nego evropski , engleski kao Mančester ili Birmingam , čuven po svojim livnicama gvožđa , fabrikama raznih sečiva i hladnog oružja , čiji visoki dimnjaci prljaju crnim dimom Bramino nebo - pravi pištolj u zemlji snova !","source_files":["I_Vern-all-57001-57500-ner.tsv"],"sample_mentions":[{"text":"Birmingam","sentence":"Putnici jedva videše Šunar , negdašnju tvrđavu radže od Behara , na dvadeset milja jugoistočno od Benaresa , Gazepur i njegove važne fabrike ružine vodice , grob lorda Kornvalisa , koji leži na levoj obali Ganga , utvrđenje Buksar , Patnu , veliko industrijsko i trgovačko središte u kome je glavno tržište opijuma u Indiji , Mangir , grad više nego evropski , engleski kao Mančester ili Birmingam , čuven po svojim livnicama gvožđa , fabrikama raznih sečiva i hladnog oružja , čiji visoki dimnjaci prljaju crnim dimom Bramino nebo - pravi pištolj u zemlji snova !","source_file":"I_Vern-all-57001-57500-ner.tsv"}]}},{"type":"Feature","geometry":{"type":"Point","coordinates":[78.404169444,17.383336111]},"properties":{"qid":"Q4141623","label":"Golconda","wikidata_url":"https://www.wikidata.org/wiki/Q4141623","annotation_types":[{"type":"LOC","count":1}],"wikidata_types":["susedstvo","Arheološko nalazište"],"ner_label":"LOC","mention_count":1,"first_order":1294,"first_mention":"Golkonda","first_sentence":"Zatim nastupi noć , i usred urlikanja tigrova , medveda , vukova , koji su bežali ispred lokomotive , voz projuri svom brzinom , i više se ništa nije videlo od čuda Bengala , Golkonda - ni Gur u ruševinama , ni Muršedabag , negdašnja prestonica , ni Burdven , ni Huglu , ni Čandernagor , ta francuska naseobina u Indiji povrh koje bi Paspartu rado ugledao lepršanje zastave svoje otadžbine !","source_files":["I_Vern-all-57001-57500-ner.tsv"],"sample_mentions":[{"text":"Golkonda","sentence":"Zatim nastupi noć , i usred urlikanja tigrova , medveda , vukova , koji su bežali ispred lokomotive , voz projuri svom brzinom , i više se ništa nije videlo od čuda Bengala , Golkonda - ni Gur u ruševinama , ni Muršedabag , negdašnja prestonica , ni Burdven , ni Huglu , ni Čandernagor , ta francuska naseobina u Indiji povrh koje bi Paspartu rado ugledao lepršanje zastave svoje otadžbine !","source_file":"I_Vern-all-57001-57500-ner.tsv"}]}}]};
+    const routeCoordinates = [[51.5113,-0.140853],[53.0,-1.0],[51.507222222,-0.1275],[48.856666666,2.352222222],[47.0,2.0],[54.6,-2.0],[51.506944444,-0.133055555],[19.0,-96.0],[53.5,15.5],[53.407222222,-2.991666666],[55.861111111,-4.25],[49.494166666,0.108055555],[29.966666666,32.533333333],[40.638333333,17.945833333],[40.712777777,-74.006111111],[25.4892,81.8593],[48.635833333,-1.510277777],[19.075833333,72.8775],[22.5675,88.37],[22.278333333,114.158611111],[35.844722222,103.451944444],[35.450333333,139.634222222],[35.0,136.0],[37.775,-122.419444444],[51.1275,1.312222222],[50.9475,1.855555555],[51.5075,-0.123611111],[51.4254,-0.0544],[22.8,83.0],[39.828175,-98.5795],[57.0,-5.0],[30.705,32.344166666],[-34.358055555,18.471944444],[31.2625,32.306111111],[22.0,38.0],[35.0,108.0],[0.0,-30.0],[46.0,105.0],[45.079166666,7.676111111],[27.0,29.0],[0.0,15.0],[48.861111111,2.394166666],[48.86967,2.30786],[-20.0,80.0],[12.8,45.033333333],[18.0,78.0],[7.0,81.0],[12.583333333,43.333333333],[26.0,52.0],[25.318888888,83.012777777],[58.663055555,27.027777777],[58.876944444,24.489444444],[15.21245,74.07323],[18.9625,72.933888888],[18.96,72.9],[13.0825,80.275],[23.9888,88.7311],[39.7225,43.054444444],[22.0,90.9],[25.45,81.85],[24.854422,79.921427],[18.95,72.795],[19.25,73.15],[18.758,73.372],[18.521111111,73.855277777],[27.35353,95.646229],[10.169722222,77.061111111],[20.0,73.783333333],[0.949392369,101.231087801],[19.93,73.5275],[20.55,74.55],[43.685,-80.427222222],[19.88,75.32],[21.3,76.226667],[21.378418,76.268065],[21.084444444,72.684166666],[20.73052,72.29749],[21.205,72.84],[22.0,78.0],[21.0,75.0],[24.617504804,82.004802139],[13.08778,80.28812],[31.0225,78.455],[29.0,84.0],[37.984166666,23.728055555],[23.2313,88.4687],[22.41185,88.24662],[25.61,85.141388888],[53.466666666,-2.233333333],[52.48,-1.9025],[17.383336111,78.404169444]];
+    const orderedFeatures = [...data.features].sort((a, b) =>
+      a.properties.first_order - b.properties.first_order
+    );
+    const map = L.map('map', { zoomControl: true, scrollWheelZoom: true }).setView([20, 30], 2);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    const markers = new Map();
+    const layerGroup = L.layerGroup().addTo(map);
+    const route = L.polyline(routeCoordinates, {
+      color: '#533f34',
+      weight: 2,
+      opacity: 0.52,
+      dashArray: '6 8'
+    }).addTo(map);
+
+    function annotationTypes(feature) {
+      return feature.properties.annotation_types.map(item => item.type);
+    }
+
+    function colorFor(feature) {
+      const types = annotationTypes(feature);
+      if (types.includes('LOC')) return '#b83b2d';
+      if (types.includes('ORG')) return '#2f6f9f';
+      return '#6f5ea8';
+    }
+
+    function radiusFor(feature) {
+      return Math.max(7, Math.min(22, 6 + Math.sqrt(feature.properties.mention_count) * 2.6));
+    }
+
+    function selectedFeature() {
+      const slider = document.getElementById('novelSlider');
+      const index = Math.max(0, Math.min(orderedFeatures.length - 1, Number(slider.value) - 1));
+      return orderedFeatures[index];
+    }
+
+    function updateNovelSliderText(currentFeature) {
+      const slider = document.getElementById('novelSlider');
+      const index = Number(slider.value);
+      const props = currentFeature.properties;
+      document.getElementById('novelPosition').textContent = `${index} / ${orderedFeatures.length}`;
+      document.getElementById('novelPlace').textContent =
+        `Do: ${props.first_mention} (${props.label}) · prvo pojavljivanje #${props.first_order}`;
+    }
+
+    function popupHtml(feature) {
+      const props = feature.properties;
+      const typeText = props.annotation_types.map(item => `${item.type} (${item.count})`).join(', ');
+      const sample = props.sample_mentions.slice(0, 4).map(item =>
+        `<p><small>${escapeHtml(item.source_file)}</small><br>${escapeHtml(item.text)}<br><small>${escapeHtml(item.sentence)}</small></p>`
+      ).join('');
+      return `<div class="popup">
+        <h2>${escapeHtml(props.label)}</h2>
+        <p><strong>${props.mention_count}</strong> pominjanja · ${escapeHtml(typeText)}</p>
+        <p><a href="${props.wikidata_url}" target="_blank" rel="noreferrer">${props.qid} na Wikidata</a></p>
+        ${sample}
+      </div>`;
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      }[char]));
+    }
+
+    function render() {
+      const search = document.getElementById('search').value.trim().toLowerCase();
+      const currentFeature = selectedFeature();
+      const currentOrderLimit = currentFeature.properties.first_order;
+      layerGroup.clearLayers();
+      markers.clear();
+      updateNovelSliderText(currentFeature);
+      route.setLatLngs(
+        orderedFeatures
+          .filter(feature => feature.properties.first_order <= currentOrderLimit)
+          .map(feature => [
+            feature.geometry.coordinates[1],
+            feature.geometry.coordinates[0]
+          ])
+      );
+
+      const visible = data.features.filter(feature => {
+        const props = feature.properties;
+        const haystack = [
+          props.label,
+          props.qid,
+          props.first_mention,
+          props.first_sentence,
+          ...props.sample_mentions.map(item => item.text)
+        ].join(' ').toLowerCase();
+        return props.first_order <= currentOrderLimit && (!search || haystack.includes(search));
+      });
+
+      for (const feature of visible) {
+        const [lon, lat] = feature.geometry.coordinates;
+        const marker = L.circleMarker([lat, lon], {
+          radius: radiusFor(feature),
+          color: '#fff',
+          weight: 2,
+          fillColor: colorFor(feature),
+          fillOpacity: 0.9
+        }).bindPopup(popupHtml(feature));
+        marker.addTo(layerGroup);
+        markers.set(feature.properties.qid, marker);
+      }
+
+      document.querySelectorAll('#rows tr').forEach(row => {
+        const marker = markers.get(row.dataset.qid);
+        row.style.display = marker ? '' : 'none';
+      });
+    }
+
+    function fitAll() {
+      const currentFeature = selectedFeature();
+      const currentOrderLimit = currentFeature.properties.first_order;
+      const featuresToFit = orderedFeatures.filter(feature =>
+        feature.properties.first_order <= currentOrderLimit
+      );
+      const bounds = L.latLngBounds(featuresToFit.map(feature => [
+        feature.geometry.coordinates[1],
+        feature.geometry.coordinates[0]
+      ]));
+      map.fitBounds(bounds, { padding: [28, 28] });
+    }
+
+    document.getElementById('search').addEventListener('input', render);
+    document.getElementById('novelSlider').addEventListener('input', render);
+    document.getElementById('fit').addEventListener('click', fitAll);
+    document.querySelectorAll('#rows tr').forEach(row => {
+      row.addEventListener('click', () => {
+        const marker = markers.get(row.dataset.qid);
+        if (marker) {
+          map.setView(marker.getLatLng(), Math.max(map.getZoom(), 6), { animate: true });
+          marker.openPopup();
+        }
+      });
+    });
+
+    render();
+    fitAll();
+  </script>
+</body>
+</html>

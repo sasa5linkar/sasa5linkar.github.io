@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="sr-Latn">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Put oko sveta za 80 dana - animacija LOC lokacija</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    :root {
+      --ink: #172126;
+      --muted: #53646a;
+      --paper: rgba(255, 255, 255, 0.92);
+      --red: #b83b2d;
+      --sea: #a9d4df;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--sea);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+    }
+    #map {
+      position: absolute;
+      inset: 0;
+      background: var(--sea);
+    }
+    .leaflet-control-container {
+      display: none;
+    }
+    .title-panel {
+      position: absolute;
+      left: 34px;
+      top: 30px;
+      width: 496px;
+      min-height: 152px;
+      padding: 22px 26px 20px 42px;
+      background: var(--paper);
+      box-shadow: 0 18px 45px rgba(20, 33, 39, 0.14);
+      z-index: 500;
+    }
+    .title-panel::before {
+      content: "";
+      position: absolute;
+      left: 20px;
+      top: 24px;
+      bottom: 24px;
+      width: 7px;
+      background: var(--red);
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+    .subtitle {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.45;
+    }
+    .stats {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      color: var(--red);
+      font-weight: 760;
+      font-size: 14px;
+      line-height: 1.3;
+    }
+    .stats span:not(:last-child)::after {
+      content: "|";
+      margin-left: 14px;
+      color: var(--red);
+      opacity: 0.9;
+    }
+    .info-panel {
+      position: absolute;
+      left: 34px;
+      bottom: 28px;
+      width: 520px;
+      padding: 18px 22px;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 18px 45px rgba(20, 33, 39, 0.14);
+      z-index: 500;
+    }
+    .step {
+      margin: 0 0 7px;
+      color: var(--red);
+      font-size: 14px;
+      font-weight: 760;
+    }
+    .place {
+      margin: 0 0 6px;
+      font-size: 24px;
+      line-height: 1.1;
+      font-weight: 780;
+    }
+    .context {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+    .timeline {
+      position: absolute;
+      right: 40px;
+      bottom: 36px;
+      width: 430px;
+      height: 48px;
+      z-index: 500;
+      display: grid;
+      gap: 8px;
+      color: #31444a;
+      font-size: 12px;
+      font-weight: 650;
+    }
+    .bar {
+      height: 13px;
+      background: rgba(255, 255, 255, 0.78);
+      box-shadow: inset 0 0 0 1px rgba(49, 68, 74, 0.12);
+      overflow: hidden;
+    }
+    .fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #e7b547, #c84b34 52%, #4b63b7);
+    }
+    .legend {
+      display: flex;
+      justify-content: space-between;
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <section class="title-panel" aria-label="Naslov">
+    <h1>Put oko sveta za 80 dana</h1>
+    <p class="subtitle">Animacija Wikidata lokacija redom prvog pojavljivanja u tekstu.</p>
+    <div class="stats">
+      <span>91 lokacija</span>
+      <span>383 LOC pominjanja</span>
+      <span>NER: LOC</span>
+    </div>
+  </section>
+  <section class="info-panel" aria-live="polite">
+    <p class="step" id="step">Korak 1 / 91</p>
+    <p class="place" id="place">Lokacija</p>
+    <p class="context" id="context">Kontekst iz rečenice.</p>
+  </section>
+  <section class="timeline" aria-label="Vremenska linija">
+    <div class="bar"><div class="fill" id="fill"></div></div>
+    <div class="legend"><span>ranije u tekstu</span><span>kasnije u tekstu</span></div>
+  </section>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map("map", {
+      zoomControl: false,
+      attributionControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      boxZoom: false,
+      keyboard: false,
+      tap: false,
+      preferCanvas: false
+    }).setView([20, 30], 2);
+
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      crossOrigin: true
+    }).addTo(map);
+
+    const stepEl = document.getElementById("step");
+    const placeEl = document.getElementById("place");
+    const contextEl = document.getElementById("context");
+    const fillEl = document.getElementById("fill");
+    const route = L.polyline([], {
+      color: "#52636a",
+      weight: 2,
+      opacity: 0.6,
+      dashArray: "7 10"
+    }).addTo(map);
+
+    let features = [];
+    let markers = [];
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function mixColor(a, b, t) {
+      const ah = Number.parseInt(a.replace("#", ""), 16);
+      const bh = Number.parseInt(b.replace("#", ""), 16);
+      const ar = ah >> 16, ag = (ah >> 8) & 255, ab = ah & 255;
+      const br = bh >> 16, bg = (bh >> 8) & 255, bb = bh & 255;
+      const rr = Math.round(ar + (br - ar) * t);
+      const rg = Math.round(ag + (bg - ag) * t);
+      const rb = Math.round(ab + (bb - ab) * t);
+      return "#" + ((1 << 24) + (rr << 16) + (rg << 8) + rb).toString(16).slice(1);
+    }
+
+    function colorForIndex(index) {
+      const t = features.length <= 1 ? 0 : index / (features.length - 1);
+      if (t < 0.5) return mixColor("#e7b547", "#c84b34", t / 0.5);
+      return mixColor("#c84b34", "#4b63b7", (t - 0.5) / 0.5);
+    }
+
+    function radiusFor(feature, current) {
+      const count = feature.properties.mention_count || 1;
+      const base = clamp(6 + Math.sqrt(count) * 2.2, 7, 20);
+      return current ? base + 6 : base;
+    }
+
+    function shortText(value, limit = 118) {
+      const text = String(value || "").replace(/\s+/g, " ").trim();
+      return text.length <= limit ? text : text.slice(0, limit - 1).trimEnd() + "...";
+    }
+
+    function latLng(feature) {
+      const [lon, lat] = feature.geometry.coordinates;
+      return [lat, lon];
+    }
+
+    function setAnimationIndex(rawIndex) {
+      if (!features.length) return;
+      const index = clamp(Number(rawIndex) || 0, 0, features.length - 1);
+      const visible = features.slice(0, index + 1);
+      route.setLatLngs(visible.map(latLng));
+
+      markers.forEach((marker, markerIndex) => {
+        const feature = features[markerIndex];
+        const isVisible = markerIndex <= index;
+        const isCurrent = markerIndex === index;
+        marker.setStyle({
+          radius: isVisible ? radiusFor(feature, isCurrent) : 0,
+          fillColor: colorForIndex(markerIndex),
+          fillOpacity: isVisible ? (isCurrent ? 1 : 0.83) : 0,
+          color: isVisible ? "#ffffff" : "#ffffff00",
+          opacity: isVisible ? 1 : 0,
+          weight: isCurrent ? 3 : 2
+        });
+        if (isCurrent) marker.bringToFront();
+      });
+
+      const props = features[index].properties;
+      const pct = Math.round((index / Math.max(1, features.length - 1)) * 100);
+      stepEl.textContent = `Korak ${index + 1} / ${features.length} | ${pct}% kroz niz pojavljivanja`;
+      placeEl.textContent = `${props.first_mention} (${props.label})`;
+      contextEl.textContent = shortText(props.first_sentence);
+      fillEl.style.width = `${pct}%`;
+      window.__animationReady = true;
+      window.__currentAnimationIndex = index;
+    }
+
+    async function boot() {
+      const response = await fetch("put_oko_sveta_locations.geojson");
+      const data = await response.json();
+      features = data.features
+        .filter(feature => feature.properties.ner_label === "LOC")
+        .sort((a, b) => a.properties.first_order - b.properties.first_order);
+
+      const bounds = L.latLngBounds(features.map(latLng));
+      map.fitBounds(bounds, { padding: [92, 84], animate: false });
+
+      markers = features.map((feature, index) => {
+        const marker = L.circleMarker(latLng(feature), {
+          radius: 0,
+          color: "#ffffff00",
+          weight: 2,
+          fillColor: colorForIndex(index),
+          fillOpacity: 0
+        }).addTo(map);
+        return marker;
+      });
+
+      setAnimationIndex(0);
+      window.setAnimationIndex = setAnimationIndex;
+      window.__featuresCount = features.length;
+    }
+
+    boot();
+  </script>
+</body>
+</html>
